@@ -10,6 +10,7 @@ def create_tables() -> None:
 def create_sample_order() -> None:
     # create a sample order
     sample_order = BinanceOrderModel(
+        symbol="BTCUSDT",
         binance_id=123,
         price=400.00,
         qty=12.00,

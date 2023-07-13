@@ -1,17 +1,16 @@
 import uuid
 
+from db.database import Base
 from sqlalchemy import (BigInteger, Boolean, Column, DateTime, Float, Integer,
-                        func)
+                        String, func)
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
 
 
 class BinanceOrderModel(Base):
     __tablename__ = "binance_orders"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    symbol = Column(String)
     binance_id = Column(Integer, index=True)
     price = Column(Float)
     qty = Column(Float)
