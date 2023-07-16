@@ -7,6 +7,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     DATABASE_URL: str
+    BTCUSDT: str
 
 
 settings = Settings()

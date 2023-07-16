@@ -1,3 +1,6 @@
+import asyncio
+from common.config import Settings
+from exchange_services.binance_service import BinanceExchangeService
 from db.database import Base, engine
 from db.models.binance_order import BinanceOrderModel
 from db.repositories.binance_order_repository import create_order
@@ -20,11 +23,20 @@ def create_sample_order() -> None:
         is_best_match=True,
     )
     create_order(sample_order)
+    
+
+async def handle_trade_data(trade_data):
+    print(trade_data)
 
 
 def main() -> None:
-    create_tables()
-    create_sample_order()
+    # create_tables()
+    # create_sample_order()
+
+    binance_service = BinanceExchangeService("BTCUSDT")
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(binance_service.get_trade_stream(handle_trade_data))
+
 
 
 if __name__ == "__main__":
