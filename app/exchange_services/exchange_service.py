@@ -8,9 +8,6 @@ from db.repositories.binance_order_repository import create_order
 
 
 class ExchangeService:
-    def __init__(self):
-        self.data = []
-
     @abstractmethod
     def collect_data(self):
         pass

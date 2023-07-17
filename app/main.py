@@ -35,7 +35,7 @@ def main() -> None:
 
     binance_service = BinanceExchangeService("BTCUSDT")
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(binance_service.get_trade_stream(handle_trade_data))
+    loop.run_until_complete(binance_service.get_trade_stream())
 
 
 
