@@ -1,12 +1,15 @@
-version: "3.9"
+version: "3.7"
 
 services:
-  postgres:
-    image: postgres:alpine
-    restart: always
-    environment:
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
+  clickhouse-server:
+    image: yandex/clickhouse-server:latest
     ports:
-      - 5432:5432
+      - "8123:8123"
+      - "9000:9000"
+      - "9009:9009"
+    networks:
+      - clickhouse-net
+
+networks:
+  clickhouse-net:
+    driver: bridge
