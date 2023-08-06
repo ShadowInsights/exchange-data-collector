@@ -12,7 +12,18 @@ class Settings(BaseSettings):
     CLICKHOUSE_PORT: int = 9000  # default Clickhouse port
 
     # default pairs to collect
-    BINANCE_PAIRS: List[str] = ["BTCUSDT", "ETHUSDT"]
+    BINANCE_PAIRS: List[str] = ["BTCUSDT:10"]
 
 
 settings = Settings()
+
+BINANCE_PAIRS = {
+    "BTCUSDT": 1,
+    "ETHUSDT": 2,
+    "XRPUSDT": 3,
+}
+
+
+EXCHANGES = {
+    "Binance": 1,
+}

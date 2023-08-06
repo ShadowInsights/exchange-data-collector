@@ -161,4 +161,4 @@ cython_debug/
 
 # VsCode
 .vscode/
-Pg.session.sql
+ClickHouse Local.session.sql

@@ -1,16 +1,25 @@
 import asyncio
+from datetime import datetime
 import json
 import logging
+import uuid
 from decimal import Decimal
 from typing import Dict
+from datetime import datetime
+from pytz import utc
 
+from click import UUID
 from clickhouse_driver import Client
 
-from app.common.config import settings
+from app.common.config import BINANCE_PAIRS, EXCHANGES
+from app.db.models.binance_order import BinanceOrderModel
+from app.db.repositories.binance_order_repository import ClickHouseRepository
 from app.services.clients.binance_http_client import BinanceHttpClient
 from app.services.clients.binance_websocket_client import \
     BinanceWebsocketClient
 from app.services.clients.schemas.binance import OrderBookSnapshot
+
+EXCHANGE_ID = EXCHANGES["Binance"]
 
 
 def handle_decimal_type(obj):
@@ -20,16 +29,24 @@ def handle_decimal_type(obj):
 
 
 class BinanceExchangeCollector:
-    def __init__(self, symbol: str):
+    def __init__(
+        self,
+        launch_id: UUID,
+        symbol: str,
+        delimiter: Decimal,
+        ch_client: Client,
+    ):
+        self.launch_id = launch_id
         self.symbol = symbol
+        self.delimiter = delimiter
         self.http_client = BinanceHttpClient(symbol)
         self.ws_client = BinanceWebsocketClient(symbol)
-        self.ch_client = Client(
-            host=settings.CLICKHOUSE_HOST, port=settings.CLICKHOUSE_PORT
-        )
+        self.ch_repository = ClickHouseRepository(ch_client)
         self.order_book = OrderBookSnapshot(0, {}, {})
+        self.stamp_id = 0
+        self.pair_id = BINANCE_PAIRS[self.symbol]
 
-    async def collect(self):
+    async def run(self):
         logging.info(f"Collecting data for {self.symbol}")
 
         # Open the stream and start the generator for the stream events
@@ -48,9 +65,7 @@ class BinanceExchangeCollector:
             f"Initial snapshot saved with lastUpdateId {last_update_id}"
         )
 
-        # Start the worker task
-        delimiter = Decimal(0.01)  # replace with the desired delimiter
-        asyncio.create_task(self.worker(delimiter))
+        asyncio.create_task(self.worker())
 
         # Process the buffered and incoming stream events
         async for update_event in event_generator:
@@ -73,37 +88,65 @@ class BinanceExchangeCollector:
             for ask in update_event.asks:
                 self._update_order_book(self.order_book.asks, ask)
 
-    async def worker(self, delimiter: Decimal):
+    async def worker(self):
         while True:
-            grouped_bids = self._group_order_book(
-                self.order_book.bids, delimiter)
-            grouped_asks = self._group_order_book(
-                self.order_book.asks, delimiter)
+            start_time = datetime.now()
+            try:
+                # Prepare
+                bucket_id = uuid.uuid4()
+                create_at = datetime.now(utc)
 
-            # Convert keys and values to string before dumping to json
-            grouped_bids = {handle_decimal_type(k): handle_decimal_type(
-                v) for k, v in grouped_bids.items()}
-            grouped_asks = {handle_decimal_type(k): handle_decimal_type(
-                v) for k, v in grouped_asks.items()}
+                # Group the order book by bucket
+                grouped_bids = self._group_order_book(
+                    self.order_book.bids, self.delimiter
+                )
+                grouped_asks = self._group_order_book(
+                    self.order_book.asks, self.delimiter
+                )
 
-            order_book_json = json.dumps(
-                {"asks": grouped_bids, "bids": grouped_asks})
-            logging.info(f"Grouped order book: {order_book_json}")
-            await asyncio.sleep(10)
+                # Build the order models
+                bids = self._build_binance_order_models(
+                    grouped_bids, 0, bucket_id, create_at
+                )
+                asks = self._build_binance_order_models(
+                    grouped_asks, 1, bucket_id, create_at
+                )
+                # Save the bucket to ClickHouse
+                await self.ch_repository.save_bucket(bids + asks)
 
-    @staticmethod
+                # Increment the stamp_id
+                self.stamp_id += 1
+
+                # Log the order book
+                self._log_order_book(grouped_bids, grouped_asks)
+            except Exception as e:
+                logging.error(f"Error: {e}")
+
+            # Calculate the time spent
+            time_spent = datetime.now() - start_time
+            time_spent = time_spent.total_seconds()
+            logging.info(f"Worker function took {time_spent} seconds")
+
+            # If the work takes less than 10 seconds, sleep for the remainder
+            if time_spent < 10:
+                await asyncio.sleep(10 - time_spent)
+            # If it takes more, log and start again immediately
+            else:
+                logging.warn(
+                    f"Worker function took longer than 1 seconds: {time_spent}")
+
+    # TODO: Fix this function
     def _group_order_book(
-        order_book: Dict[str, str], delimiter: Decimal
+        self, order_book: Dict[str, str], delimiter: Decimal
     ) -> Dict[Decimal, Decimal]:
         grouped_order_book = {}
         for price, quantity in order_book.items():
             price = Decimal(price)
             quantity = Decimal(quantity)
-           
+
             # Calculate bucketed price
             bucketed_price = Decimal(f"0.{price // delimiter}")
-            # TODO: fix rounding
-            print(price, bucketed_price)
+
             if bucketed_price not in grouped_order_book:
                 grouped_order_book[bucketed_price] = Decimal(0.0)
 
@@ -112,8 +155,9 @@ class BinanceExchangeCollector:
 
         return grouped_order_book
 
-    @staticmethod
-    def _update_order_book(order_book: Dict[str, str], update: Dict[str, str]):
+    def _update_order_book(
+        self, order_book: Dict[str, str], update: Dict[str, str]
+    ) -> None:
         logging.debug(f"Updating order book with {update}")
         # The data in each event is the absolute quantity for a price level
         price, quantity = update.price, update.quantity
@@ -123,3 +167,38 @@ class BinanceExchangeCollector:
         else:
             # Otherwise, update the quantity at this price level
             order_book[price] = quantity
+
+    def _build_binance_order_models(
+        self, order_book: Dict[str, str], order_type: str, bucket_id: UUID, create_at: datetime
+    ) -> list[BinanceOrderModel]:
+        return [
+            BinanceOrderModel(
+                id=uuid.uuid4(),
+                launch_id=self.launch_id,
+                order_type=order_type,
+                price=Decimal(price),
+                quantity=Decimal(quantity),
+                bucket_id=bucket_id,
+                pair_id=self.pair_id,
+                exchange_id=EXCHANGE_ID,
+                stamp_id=self.stamp_id,
+                created_at=create_at
+            )
+            for price, quantity in order_book.items()
+        ]
+
+    def _log_order_book(self, grouped_bids, grouped_asks) -> None:
+        # Convert keys and values to string before dumping to json
+        grouped_bids = {
+            handle_decimal_type(k): handle_decimal_type(v)
+            for k, v in grouped_bids.items()
+        }
+        grouped_asks = {
+            handle_decimal_type(k): handle_decimal_type(v)
+            for k, v in grouped_asks.items()
+        }
+
+        order_book_json = json.dumps(
+            {"asks": grouped_bids, "bids": grouped_asks}
+        )
+        logging.info(f"Saved grouped order book: {order_book_json}")
