@@ -10,6 +10,7 @@ load_dotenv()
 class Settings(BaseSettings):
     CLICKHOUSE_HOST: str = "localhost"  # default Clickhouse host
     CLICKHOUSE_PORT: int = 9000  # default Clickhouse port
+    CLICKHOUSE_CONNECTION_POOL_SIZE: int = 10  # default Clickhouse user
 
     # default pairs to collect
     BINANCE_PAIRS: List[str] = ["BTCUSDT:10"]

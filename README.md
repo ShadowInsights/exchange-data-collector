@@ -16,7 +16,7 @@ poetry shell
 poetry install
 ```
 
-### Run Docker to launch PostgreSQL
+### Run Docker to launch ClickHouse
 
 ```sh
 docker-compose up -d

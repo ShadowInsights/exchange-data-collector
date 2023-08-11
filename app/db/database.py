@@ -1,19 +1,20 @@
-from contextlib import contextmanager
+import asyncio
 
-from common.config import settings
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from clickhouse_driver import Client
 
-engine = create_engine(settings.DATABASE_URL, echo=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
+from app.common.config import settings
 
 
-@contextmanager
-def get_db() -> Session:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+class ClickHousePool:
+    def __init__(self, max_connections=5):
+        self._semaphore = asyncio.Semaphore(max_connections)
+        self._host = settings.CLICKHOUSE_HOST
+        self._port = settings.CLICKHOUSE_PORT
+
+    async def execute(self, query, params=None):
+        async with self._semaphore:
+            return await asyncio.to_thread(self._execute_sync, query, params)
+
+    def _execute_sync(self, query, params):
+        with Client(host=self._host, port=self._port) as client:
+            return client.execute(query, params)
