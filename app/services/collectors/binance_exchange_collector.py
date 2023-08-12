@@ -5,9 +5,8 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict
+from uuid import UUID
 
-from click import UUID
-from clickhouse_driver import Client
 from pytz import utc
 
 from app.common.config import BINANCE_PAIRS, EXCHANGES

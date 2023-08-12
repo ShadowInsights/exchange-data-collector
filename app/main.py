@@ -18,7 +18,6 @@ logging.basicConfig(
     format="%(asctime)s [%(filename)s] %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(f"binance-data-collector-{launch_id}.log"),
     ],
 )
 
