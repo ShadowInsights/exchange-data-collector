@@ -10,6 +10,8 @@ load_dotenv()
 class Settings(BaseSettings):
     CLICKHOUSE_HOST: str = "localhost"  # default Clickhouse host
     CLICKHOUSE_PORT: int = 9000  # default Clickhouse port
+    CLICKHOUSE_USERNAME: str = "default"  # default Clickhouse user
+    CLICKHOUSE_PASSWORD: str = ""  # default Clickhouse password
     CLICKHOUSE_CONNECTION_POOL_SIZE: int = 10  # default Clickhouse user
 
     # default pairs to collect
