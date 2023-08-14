@@ -5,9 +5,9 @@ on:
 
 env:
   PROJECT_ID: web3-metrics
-  GAR_LOCATION: europe-west4
+  GAR_LOCATION: asia-southeast1
   SERVICE: exchange-data-collector
-  REGION: europe-west4
+  REGION: asia-southeast1
 
 jobs:
   deploy:
