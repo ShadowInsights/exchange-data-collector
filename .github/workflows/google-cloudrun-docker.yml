@@ -21,9 +21,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         
-      - name: Debug Output
-        run: echo "${{ secrets.WIF_PROVIDER }} ${{ secrets.WIF_SERVICE_ACCOUNT }}"
-        
       - name: Google Auth
         id: auth
         uses: "google-github-actions/auth@v0"
