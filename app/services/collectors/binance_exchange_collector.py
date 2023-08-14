@@ -92,6 +92,10 @@ class BinanceExchangeCollector:
     async def worker(self):
         while True:
             start_time = datetime.now()
+            logging.info(
+                f"Worker function cycle started [symbol={self._symbol}]"
+            )
+
             try:
                 # Prepare
                 bucket_id = uuid.uuid4()

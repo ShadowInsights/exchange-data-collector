@@ -25,5 +25,6 @@ docker-compose up -d
 ### Run the main.py script
 
 ```sh
+export PYTHONPATH="$PYTHONPATH:$(pwd)"
 poetry run python main.py
 ```

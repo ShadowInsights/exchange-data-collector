@@ -25,9 +25,18 @@ def create_table(client):
 
 
 def main():
-    client = Client(
-        host=os.getenv("CLICKHOUSE_HOST"), port=os.getenv("CLICKHOUSE_PORT")
-    )
+    connection_settings = {
+        "host": os.getenv("CLICKHOUSE_HOST"),
+        "port": int(os.getenv("CLICKHOUSE_PORT")),
+        "user": os.getenv("CLICKHOUSE_USERNAME"),
+        "password": os.getenv("CLICKHOUSE_PASSWORD"),
+        "database": os.getenv("CLICKHOUSE_DATABASE"),
+    }
+    if int(os.getenv("CLICKHOUSE_PORT")) == 9440:
+        connection_settings["secure"] = True
+        connection_settings["verify"] = False
+
+    client = Client(**connection_settings)
     create_table(client)
 
 

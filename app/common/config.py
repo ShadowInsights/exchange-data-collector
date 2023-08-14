@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     CLICKHOUSE_USERNAME: str = "default"  # default Clickhouse user
     CLICKHOUSE_PASSWORD: str = ""  # default Clickhouse password
     CLICKHOUSE_CONNECTION_POOL_SIZE: int = 10  # default Clickhouse user
+    CLICKHOUSE_DATABASE: str = "default"  # default Clickhouse database
 
     # default pairs to collect
     BINANCE_PAIRS: List[str] = ["BTCUSDT:10"]
@@ -24,6 +25,8 @@ BINANCE_PAIRS = {
     "BTCUSDT": 1,
     "ETHUSDT": 2,
     "XRPUSDT": 3,
+    "BCHUSDT": 4,
+    "LTCUSDT": 5,
 }
 
 
