@@ -227,6 +227,17 @@ docs = ["furo (>=2023.7.26)", "proselint (>=0.13)", "sphinx-autodoc-typehints (>
 test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest-cov (>=4.1)", "pytest-mock (>=3.11.1)", "pytest (>=7.4)"]
 
 [[package]]
+name = "prometheus-client"
+version = "0.17.1"
+description = "Python client for the Prometheus monitoring system."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+twisted = ["twisted"]
+
+[[package]]
 name = "pycodestyle"
 version = "2.11.0"
 description = "Python style guide checker"
@@ -357,7 +368,7 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "011d15089c4696702b5680ea07573d318c1f9bb0b48d7314eb3f7dd9727e5bdd"
+content-hash = "8f1f8a9b4fb17536e59ff1b2a906a19b7f62ae44e49d46b184727932f296e6d3"
 
 [metadata.files]
 annotated-types = []
@@ -379,6 +390,7 @@ mypy-extensions = []
 packaging = []
 pathspec = []
 platformdirs = []
+prometheus-client = []
 pycodestyle = []
 pydantic = []
 pydantic-core = []

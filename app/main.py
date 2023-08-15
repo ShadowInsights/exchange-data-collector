@@ -1,3 +1,4 @@
+from prometheus_client import start_http_server
 import asyncio
 import logging
 import uuid
@@ -23,22 +24,9 @@ logging.basicConfig(
 )
 
 
-async def tcp_health_check(port: int):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('0.0.0.0', port))
-        s.listen()
-        logging.info(f"Health check listening on port {port}")
-        while True:
-            conn, addr = s.accept()
-            with conn:
-                logging.info(f"Connected by {addr}")
-                conn.close()
-
-
 async def main():
     # Start the health check server
-    health_check_task = tcp_health_check(8080)
-    tasks = [health_check_task]
+    start_http_server(8080)
 
     logging.info("Starting data collection")
     logging.info(f"Launch ID: {launch_id}")

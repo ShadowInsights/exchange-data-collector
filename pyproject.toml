@@ -11,6 +11,7 @@ pydantic-settings = "^2.0.1"
 httpx = "^0.24.1"
 websockets = "^11.0.3"
 clickhouse-driver = "^0.2.6"
+prometheus-client = "^0.17.1"
 
 [tool.poetry.dev-dependencies]
 isort = "^5.12.0"
