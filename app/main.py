@@ -25,7 +25,7 @@ logging.basicConfig(
 
 
 async def main():
-    # Start the health check server
+    logging.info("Starting Prometheus server")
     start_http_server(8080)
 
     logging.info("Starting data collection")
