@@ -49,5 +49,7 @@ COPY ./app /home/app/app
 # Change to a non-root user
 USER app
 
+EXPOSE 8080
+
 # Command to run the application
 CMD ["python", "./app/main.py"]
