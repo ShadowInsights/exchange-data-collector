@@ -37,7 +37,8 @@ async def tcp_health_check(port: int):
 
 async def main():
     # Start the health check server
-    asyncio.create_task(tcp_health_check(8080))
+    health_check_task = tcp_health_check(8080)
+    tasks = [health_check_task]
 
     logging.info("Starting data collection")
     logging.info(f"Launch ID: {launch_id}")
