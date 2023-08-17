@@ -135,9 +135,9 @@ class BinanceExchangeCollector:
                 f"Worker function took {time_spent} seconds [symbol={self._symbol}]"
             )
 
-            # If the work takes less than 10 seconds, sleep for the remainder
-            if time_spent < 10:
-                await asyncio.sleep(10 - time_spent)
+            # If the work takes less than 1 seconds, sleep for the remainder
+            if time_spent < 1:
+                await asyncio.sleep(1 - time_spent)
             # If it takes more, log and start again immediately
             else:
                 logging.warn(

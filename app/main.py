@@ -1,9 +1,10 @@
-from prometheus_client import start_http_server
 import asyncio
 import logging
+import socket
 import uuid
 from decimal import Decimal
-import socket
+
+from prometheus_client import start_http_server
 
 from app.common.config import settings
 from app.db.database import ClickHousePool

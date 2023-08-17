@@ -16,7 +16,18 @@ class Settings(BaseSettings):
     CLICKHOUSE_DATABASE: str = "default"  # default Clickhouse database
 
     # default pairs to collect
-    BINANCE_PAIRS: List[str] = ["BTCUSDT:10"]
+    BINANCE_PAIRS: List[str] = [
+        "BTCUSDT:10",
+        "ETHUSDT:1",
+        "XRPUSDT:0.001",
+        "BCHUSDT:1",
+        "LTCUSDT:0.1",
+        "SOLUSDT:0.1",
+        "ETCUSDT:0.1",
+        "ALGOUSDT:0.001",
+        "CRVUSDT:0.001",
+        "ZECUSDT:0.1",
+    ]
 
 
 settings = Settings()
@@ -27,6 +38,11 @@ BINANCE_PAIRS = {
     "XRPUSDT": 3,
     "BCHUSDT": 4,
     "LTCUSDT": 5,
+    "SOLUSDT": 6,
+    "ETCUSDT": 7,
+    "ALGOUSDT": 8,
+    "CRVUSDT": 9,
+    "ZECUSDT": 10,
 }
 
 
