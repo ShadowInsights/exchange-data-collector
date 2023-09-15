@@ -92,7 +92,7 @@ class BinanceExchangeCollector:
     async def worker(self):
         while True:
             start_time = datetime.now()
-            logging.info(
+            logging.debug(
                 f"Worker function cycle started [symbol={self._symbol}]"
             )
 
@@ -131,7 +131,7 @@ class BinanceExchangeCollector:
             # Calculate the time spent
             time_spent = datetime.now() - start_time
             time_spent = time_spent.total_seconds()
-            logging.info(
+            logging.debug(
                 f"Worker function took {time_spent} seconds [symbol={self._symbol}]"
             )
 
@@ -214,6 +214,6 @@ class BinanceExchangeCollector:
         order_book_json = json.dumps(
             {"asks": grouped_bids, "bids": grouped_asks}
         )
-        logging.info(
+        logging.debug(
             f"Saved grouped order book: {order_book_json} [symbol={self._symbol}]"
         )
