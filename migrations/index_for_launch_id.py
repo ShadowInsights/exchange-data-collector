@@ -6,8 +6,10 @@ from clickhouse_driver import Client
 def create_table(client):
     client.execute(
         """
-    ALTER TABLE binance_orderbook ADD INDEX launch_id_index (launch_id) TYPE minmax GRANULARITY 1;
     SET allow_create_index_without_type=1;
+    ALTER TABLE binance_orderbook ADD INDEX launch_id_index (launch_id) TYPE minmax GRANULARITY 1;
+    ALTER TABLE binance_orderbook ADD INDEX stamp_id_index (stamp_id) TYPE minmax GRANULARITY 1;
+    ALTER TABLE binance_orderbook ADD INDEX bucket_id_index (bucket_id) TYPE minmax GRANULARITY 1;
     """
     )
 

@@ -64,7 +64,8 @@ class BinanceExchangeCollector:
             f"Initial snapshot saved with lastUpdateId {last_update_id} [symbol={self._symbol}]"
         )
 
-        asyncio.create_task(self.worker())
+        # TODO: Uncomment this line to start the worker
+        # asyncio.create_task(self.worker())
 
         # Process the buffered and incoming stream events
         async for update_event in event_generator:
