@@ -1,20 +1,15 @@
 import asyncio
 import logging
-import socket
 import uuid
-from decimal import Decimal
 
 from prometheus_client import start_http_server
 
-from app.common.config import settings
-from app.db.database import ClickHousePool
+from app.db.common import get_db
+from app.db.repositories.pair_repository import find_all_pairs
 from app.services.collectors.binance_exchange_collector import \
     BinanceExchangeCollector
 
 launch_id = uuid.uuid4()
-ch_connection_pool = ClickHousePool(
-    max_connections=settings.CLICKHOUSE_CONNECTION_POOL_SIZE
-)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,11 +28,18 @@ async def main():
     logging.info(f"Launch ID: {launch_id}")
 
     tasks = []  # List to store tasks
-    for pair in settings.BINANCE_PAIRS:
-        symbol = pair.split(":")[0]
-        delimiter = Decimal(pair.split(":")[1])
+    pairs = []  # List to store pairs
+
+    async with get_db() as session:
+        pairs = await find_all_pairs(session)
+
+    for pair in pairs:
         collector = BinanceExchangeCollector(
-            launch_id, symbol, delimiter, ch_connection_pool
+            launch_id=launch_id,
+            pair_id=pair.id,
+            exchange_id=pair.exchange_id,
+            symbol=pair.symbol,
+            delimiter=pair.delimiter,
         )
 
         # Schedule the collector's task to run

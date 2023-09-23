@@ -1,16 +1,18 @@
 import asyncio
 import json
 import logging
-import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict
 from uuid import UUID
 
+from app.db.common import get_db
+from app.db.repositories.order_book_repository import crate_order_book
 from app.services.clients.binance_http_client import BinanceHttpClient
 from app.services.clients.binance_websocket_client import \
     BinanceWebsocketClient
 from app.services.clients.schemas.binance import OrderBookSnapshot
+from app.services.collectors.common import OrderBook
 
 
 def handle_decimal_type(obj):
@@ -57,8 +59,7 @@ class BinanceExchangeCollector:
             f"Initial snapshot saved with lastUpdateId {last_update_id} [symbol={self._symbol}]"
         )
 
-        # TODO: Uncomment this line to start the worker
-        # asyncio.create_task(self.worker())
+        asyncio.create_task(self.worker())
 
         # Process the buffered and incoming stream events
         async for update_event in event_generator:
@@ -91,24 +92,29 @@ class BinanceExchangeCollector:
             )
 
             try:
-                # Group the order book by bucket
-                grouped_bids = self._group_order_book(
-                    self._order_book.bids, self._delimiter
-                )
-                grouped_asks = self._group_order_book(
-                    self._order_book.asks, self._delimiter
+                order_book = OrderBook(
+                    a=self._group_order_book(
+                        self._order_book.asks, self._delimiter
+                    ),
+                    b=self._group_order_book(
+                        self._order_book.bids, self._delimiter
+                    ),
                 )
 
-                # Build the order models
-
-                # Save the bucket to ClickHouse
-                await self._ch_repository.save_bucket(bids + asks)
+                async with get_db() as session:
+                    await crate_order_book(
+                        session,
+                        self._launch_id,
+                        self._stamp_id,
+                        self._pair_id,
+                        order_book=order_book.model_dump_json(),
+                    )
 
                 # Increment the stamp_id
                 self._stamp_id += 1
 
                 # Log the order book
-                self._log_order_book(grouped_bids, grouped_asks)
+                self._log_order_book(order_book.b, order_book.a)
             except Exception as e:
                 logging.error(f"Error: {e} [symbol={self._symbol}]")
 
@@ -160,29 +166,6 @@ class BinanceExchangeCollector:
         else:
             # Otherwise, update the quantity at this price level
             order_book[price] = quantity
-
-    def _build_binance_order_model(
-        self,
-        order_book: Dict[str, str],
-        order_type: str,
-        bucket_id: UUID,
-        create_at: datetime,
-    ) -> list[BinanceOrderModel]:
-        return [
-            BinanceOrderModel(
-                id=uuid.uuid4(),
-                launch_id=self._launch_id,
-                order_type=order_type,
-                price=Decimal(price),
-                quantity=Decimal(quantity),
-                bucket_id=bucket_id,
-                pair_id=self._pair_id,
-                exchange_id=EXCHANGE_ID,
-                stamp_id=self._stamp_id,
-                created_at=create_at,
-            )
-            for price, quantity in order_book.items()
-        ]
 
     def _log_order_book(self, grouped_bids, grouped_asks) -> None:
         # Convert keys and values to string before dumping to json

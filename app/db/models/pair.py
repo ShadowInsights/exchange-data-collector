@@ -1,7 +1,7 @@
 from sqlalchemy import DECIMAL, Column, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.db.database import BaseModel
+from app.db.common import BaseModel
 
 
 class PairModel(BaseModel):

@@ -7,6 +7,6 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
-      POSTGRES_DB: exhange_data_collector
+      POSTGRES_DB: exchange_data_collector
     ports:
       - 5432:5432

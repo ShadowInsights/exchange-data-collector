@@ -1,12 +1,23 @@
-from typing import List
+from uuid import UUID
 
-from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.order_book import OrderBookModel
+from app.services.collectors.common import OrderBook
 
 
-async def save_order_book(
-    self,
-    db: AsyncSession,
+async def crate_order_book(
+    session: AsyncSession,
+    launch_id: UUID,
+    stamp_id: int,
+    pair_id: UUID,
+    order_book: str,
 ) -> OrderBookModel:
-    pass
+    order_book = OrderBookModel(
+        launch_id=launch_id,
+        stamp_id=stamp_id,
+        pair_id=pair_id,
+        order_book=order_book,
+    )
+    session.add(order_book)
+    return order_book

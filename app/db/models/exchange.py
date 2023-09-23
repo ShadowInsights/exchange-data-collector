@@ -1,7 +1,6 @@
 from sqlalchemy import Column, String
-from sqlalchemy.orm import relationship
 
-from app.db.database import BaseModel
+from app.db.common import BaseModel
 
 
 class ExchangeModel(BaseModel):

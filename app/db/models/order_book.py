@@ -1,9 +1,7 @@
-from sqlalchemy import Column, ForeignKey, BigInteger
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy import BigInteger, Column, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
-from app.db.database import BaseModel
+from app.db.common import BaseModel
 
 
 class OrderBookModel(BaseModel):
