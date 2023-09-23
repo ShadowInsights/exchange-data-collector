@@ -1,43 +1,43 @@
-import asyncio
-from clickhouse_driver import Client
-from app.common.config import settings
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from uuid import uuid4
+
+from sqlalchemy import Column, DateTime, text
+from sqlalchemy.dialects.postgresql import UUID as pg_UUID
+from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
+                                    create_async_engine)
+from sqlalchemy.orm import DeclarativeBase
+
+from app.common.config import DB_CONNECTION_STRING_ASYNC
+
+logger = logging.getLogger(__name__)
+
+async_engine = create_async_engine(
+    DB_CONNECTION_STRING_ASYNC,
+    echo=False,
+)
 
 
-class ClickHousePool:
-    def __init__(self, max_connections=5):
-        self._semaphore = asyncio.Semaphore(max_connections)
-        self._clients = []
-        self._host = settings.CLICKHOUSE_HOST
-        self._port = settings.CLICKHOUSE_PORT
-        self._username = settings.CLICKHOUSE_USERNAME
-        self._password = settings.CLICKHOUSE_PASSWORD
-        self._database = settings.CLICKHOUSE_DATABASE
+@asynccontextmanager
+async def get_db() -> AsyncIterator[AsyncSession]:
+    session_class = async_sessionmaker(
+        async_engine,
+        expire_on_commit=False,
+    )
+    session = session_class()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
-        for _ in range(max_connections):
-            client = self._create_client()
-            self._clients.append(client)
 
-    def _create_client(self):
-        connection_settings = {
-            "host": self._host,
-            "port": self._port,
-            "user": self._username,
-            "password": self._password,
-            "database": self._database,
-        }
-        if self._port == 9440:
-            connection_settings["secure"] = True
-            connection_settings["verify"] = False
-
-        return Client(**connection_settings)
-
-    async def execute(self, query, params=None):
-        async with self._semaphore:
-            client = self._clients.pop()
-            try:
-                return await asyncio.to_thread(self._execute_sync, client, query, params)
-            finally:
-                self._clients.append(client)
-
-    def _execute_sync(self, client, query, params):
-        return client.execute(query, params)
+class BaseModel(DeclarativeBase):
+    id = Column(pg_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    created_at = Column(
+        DateTime, nullable=False, server_default=text("current_timestamp(0)")
+    )

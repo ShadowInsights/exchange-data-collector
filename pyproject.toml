@@ -7,11 +7,16 @@ authors = ["Shadow Insights"]
 [tool.poetry.dependencies]
 python = "^3.10"
 python-dotenv = "^1.0.0"
-pydantic-settings = "^2.0.1"
 httpx = "^0.24.1"
 websockets = "^11.0.3"
-clickhouse-driver = "^0.2.6"
 prometheus-client = "^0.17.1"
+asyncpg = "^0.28.0"
+alembic = "^1.12.0"
+greenlet = "^2.0.2"
+psycopg2-binary = "^2.9.7"
+sqlalchemy = "^2.0.21"
+pydantic = "^2.3.0"
+pydantic-settings = "^2.0.3"
 
 [tool.poetry.dev-dependencies]
 isort = "^5.12.0"

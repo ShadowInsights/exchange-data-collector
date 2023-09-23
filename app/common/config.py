@@ -1,5 +1,3 @@
-from typing import List
-
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
@@ -8,44 +6,40 @@ load_dotenv()
 
 
 class Settings(BaseSettings):
-    CLICKHOUSE_HOST: str = "localhost"  # default Clickhouse host
-    CLICKHOUSE_PORT: int = 9000  # default Clickhouse port
-    CLICKHOUSE_USERNAME: str = "default"  # default Clickhouse user
-    CLICKHOUSE_PASSWORD: str = ""  # default Clickhouse password
-    CLICKHOUSE_CONNECTION_POOL_SIZE: int = 10  # default Clickhouse user
-    CLICKHOUSE_DATABASE: str = "default"  # default Clickhouse database
-
-    # default pairs to collect
-    BINANCE_PAIRS: List[str] = [
-        "BTCUSDT:10",
-        "ETHUSDT:1",
-        "XRPUSDT:0.001",
-        "BCHUSDT:1",
-        "LTCUSDT:0.1",
-        "SOLUSDT:0.1",
-        "ETCUSDT:0.1",
-        "ALGOUSDT:0.001",
-        "CRVUSDT:0.001",
-        "ZECUSDT:0.1",
-    ]
+    POSTGRES_HOST: str
+    POSTGRES_DB: str
+    POSTGRES_PORT: int
+    POSTGRES_USERNAME: str
+    POSTGRES_PASSWORD: str
 
 
 settings = Settings()
 
-BINANCE_PAIRS = {
-    "BTCUSDT": 1,
-    "ETHUSDT": 2,
-    "XRPUSDT": 3,
-    "BCHUSDT": 4,
-    "LTCUSDT": 5,
-    "SOLUSDT": 6,
-    "ETCUSDT": 7,
-    "ALGOUSDT": 8,
-    "CRVUSDT": 9,
-    "ZECUSDT": 10,
-}
+
+def pg_dsn(
+    host: str,
+    db: str,
+    port: int,
+    username: str,
+    password: str,
+    schema: str = "postgresql://",
+) -> str:
+    return f"{schema}{username}:{password}@{host}:{port}/{db}"
 
 
-EXCHANGES = {
-    "Binance": 1,
-}
+DB_CONNECTION_STRING = pg_dsn(
+    host=settings.POSTGRES_HOST,
+    db=settings.POSTGRES_DB,
+    port=settings.POSTGRES_PORT,
+    username=settings.POSTGRES_USERNAME,
+    password=settings.POSTGRES_PASSWORD,
+)
+
+DB_CONNECTION_STRING_ASYNC = pg_dsn(
+    host=settings.POSTGRES_HOST,
+    db=settings.POSTGRES_DB,
+    port=settings.POSTGRES_PORT,
+    username=settings.POSTGRES_USERNAME,
+    password=settings.POSTGRES_PASSWORD,
+    schema="postgresql+asyncpg://",
+)
