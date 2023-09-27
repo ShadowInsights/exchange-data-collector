@@ -13,12 +13,23 @@ from app.services.clients.binance_websocket_client import \
     BinanceWebsocketClient
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import OrderBook
+from app.utils.time_utils import (LONDON_TRADING_SESSION,
+                                  NEW_YORK_TRADING_SESSION,
+                                  TOKYO_TRADING_SESSION,
+                                  is_current_time_inside_trading_sessions)
 
 
 def handle_decimal_type(obj):
     if isinstance(obj, Decimal):
         return str(obj)
     raise TypeError
+
+
+trading_sessions = [
+    TOKYO_TRADING_SESSION,
+    LONDON_TRADING_SESSION,
+    NEW_YORK_TRADING_SESSION,
+]
 
 
 class BinanceExchangeCollector:
@@ -92,6 +103,11 @@ class BinanceExchangeCollector:
             )
 
             try:
+                if not is_current_time_inside_trading_sessions(
+                    trading_sessions
+                ):
+                    continue
+
                 order_book = OrderBook(
                     a=self._group_order_book(
                         self._order_book.asks, self._delimiter

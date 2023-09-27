@@ -3,7 +3,6 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.order_book import OrderBookModel
-from app.services.collectors.common import OrderBook
 
 
 async def crate_order_book(
