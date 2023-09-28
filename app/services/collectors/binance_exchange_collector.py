@@ -70,7 +70,9 @@ class BinanceExchangeCollector:
             f"Initial snapshot saved with lastUpdateId {last_update_id} [symbol={self._symbol}]"
         )
 
-        asyncio.create_task(self.worker())
+        asyncio.create_task(self.__db_worker())
+        # asyncio.create_task(self.__walls_worker())
+        # asyncio.create_task(self.__liquidity_worker())
 
         # Process the buffered and incoming stream events
         async for update_event in event_generator:
@@ -95,7 +97,7 @@ class BinanceExchangeCollector:
             for ask in update_event.asks:
                 self._update_order_book(self._order_book.asks, ask)
 
-    async def worker(self):
+    async def __db_worker(self):
         while True:
             start_time = datetime.now()
             logging.debug(
