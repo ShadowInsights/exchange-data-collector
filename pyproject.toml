@@ -17,6 +17,9 @@ psycopg2-binary = "^2.9.7"
 sqlalchemy = "^2.0.21"
 pydantic = "^2.3.0"
 pydantic-settings = "^2.0.3"
+celery = {extras = ["redis"], version = "^5.3.4"}
+celery-once = "^3.0.1"
+google-cloud-storage = "^2.11.0"
 
 [tool.poetry.dev-dependencies]
 isort = "^5.12.0"

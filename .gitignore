@@ -162,3 +162,5 @@ cython_debug/
 # VsCode
 .vscode/
 ClickHouse Local.session.sql
+
+/secrets
