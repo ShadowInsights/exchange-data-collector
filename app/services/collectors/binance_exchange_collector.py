@@ -13,6 +13,8 @@ from app.services.clients.binance_websocket_client import \
     BinanceWebsocketClient
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import OrderBook
+from app.services.collectors.workers.db_worker import DbWorker
+from app.services.collectors.workers.walls_worker import WallsWorker
 from app.utils.time_utils import (LONDON_TRADING_SESSION,
                                   NEW_YORK_TRADING_SESSION,
                                   TOKYO_TRADING_SESSION,
@@ -50,6 +52,7 @@ class BinanceExchangeCollector:
         self._stamp_id = 0
         self._pair_id = pair_id
         self._exchange_id = exchange_id
+        self._workers = [WallsWorker(), DbWorker()]
 
     async def run(self):
         logging.info(f"Collecting data for {self._symbol}")
@@ -70,8 +73,11 @@ class BinanceExchangeCollector:
             f"Initial snapshot saved with lastUpdateId {last_update_id} [symbol={self._symbol}]"
         )
 
-        asyncio.create_task(self.__db_worker())
+        for worker in self._workers:
+            asyncio.create_task(worker.run())
+
         # asyncio.create_task(self.__walls_worker())
+        # asyncio.create_task(self.__db_worker())
         # asyncio.create_task(self.__liquidity_worker())
 
         # Process the buffered and incoming stream events
@@ -108,6 +114,7 @@ class BinanceExchangeCollector:
                 if not is_current_time_inside_trading_sessions(
                     trading_sessions
                 ):
+                    await asyncio.sleep(1)
                     continue
 
                 order_book = OrderBook(
