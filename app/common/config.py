@@ -22,7 +22,7 @@ def pg_dsn(
     port: int,
     username: str,
     password: str,
-    schema: str = "postgresql://",
+    schema: str,
 ) -> str:
     return f"{schema}{username}:{password}@{host}:{port}/{db}"
 
@@ -33,6 +33,7 @@ DB_CONNECTION_STRING = pg_dsn(
     port=settings.POSTGRES_PORT,
     username=settings.POSTGRES_USERNAME,
     password=settings.POSTGRES_PASSWORD,
+    schema="postgresql://",
 )
 
 DB_CONNECTION_STRING_ASYNC = pg_dsn(

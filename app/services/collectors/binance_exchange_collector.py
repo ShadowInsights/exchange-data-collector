@@ -108,6 +108,7 @@ class BinanceExchangeCollector:
                 if not is_current_time_inside_trading_sessions(
                     trading_sessions
                 ):
+                    await asyncio.sleep(1)
                     continue
 
                 order_book = OrderBook(
