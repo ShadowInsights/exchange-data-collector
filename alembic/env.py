@@ -4,7 +4,7 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 from app.common.config import DB_CONNECTION_STRING
-from app.db.common import BaseModel
+from app.common.database import BaseModel
 from app.db.models.exchange import ExchangeModel
 from app.db.models.order_book import OrderBookModel
 from app.db.models.pair import PairModel

@@ -4,20 +4,12 @@ import uuid
 
 from prometheus_client import start_http_server
 
-from app.db.common import get_db
+from app.common.database import get_async_db
 from app.db.repositories.pair_repository import find_all_pairs
 from app.services.collectors.binance_exchange_collector import \
     BinanceExchangeCollector
 
 launch_id = uuid.uuid4()
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(filename)s] %(levelname)s %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-    ],
-)
 
 
 async def main():
@@ -30,7 +22,7 @@ async def main():
     tasks = []  # List to store tasks
     pairs = []  # List to store pairs
 
-    async with get_db() as session:
+    async with get_async_db() as session:
         pairs = await find_all_pairs(session)
 
     for pair in pairs:

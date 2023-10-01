@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Dict
 from uuid import UUID
 
-from app.db.common import get_db
+from app.common.database import get_async_db
 from app.db.repositories.order_book_repository import crate_order_book
 from app.services.clients.binance_http_client import BinanceHttpClient
 from app.services.clients.binance_websocket_client import \
@@ -108,6 +108,7 @@ class BinanceExchangeCollector:
                 if not is_current_time_inside_trading_sessions(
                     trading_sessions
                 ):
+                    # TODO: calculate the time to the next trading session
                     await asyncio.sleep(1)
                     continue
 
@@ -120,7 +121,7 @@ class BinanceExchangeCollector:
                     ),
                 )
 
-                async with get_db() as session:
+                async with get_async_db() as session:
                     await crate_order_book(
                         session,
                         self._launch_id,

@@ -1,7 +1,7 @@
 from sqlalchemy import BigInteger, Column, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
-from app.db.common import BaseModel
+from app.common.database import BaseModel
 
 
 class OrderBookModel(BaseModel):
