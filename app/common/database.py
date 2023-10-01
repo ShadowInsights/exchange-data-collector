@@ -1,7 +1,6 @@
 import logging
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from typing import Iterator
 from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, create_engine, text
