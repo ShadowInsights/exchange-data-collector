@@ -46,10 +46,16 @@ COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/pytho
 COPY --from=builder /app /app
 COPY ./app /home/app/app
 
+# Copy the entrypoint script
+COPY ./entrypoint.sh /entrypoint.sh
+
+# Change the permissions of the entrypoint script as root
+RUN chmod +x /entrypoint.sh
+
 # Change to a non-root user
 USER app
 
 EXPOSE 8080
 
 # Command to run the application
-CMD ["python", "./app/main.py"]
+CMD ["/entrypoint.sh"]

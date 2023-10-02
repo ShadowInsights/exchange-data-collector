@@ -14,14 +14,6 @@ from app.services.collectors.binance_exchange_collector import \
 launch_id = uuid.uuid4()
 
 
-def run_celery_worker():
-    os.system("celery -A app.common.worker.worker worker --loglevel=info")
-
-
-def run_celery_beat():
-    os.system("celery -A app.common.worker.worker beat --loglevel=info")
-
-
 async def main():
     logging.info("Starting Prometheus server")
     start_http_server(8080)
