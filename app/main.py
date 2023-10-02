@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import multiprocessing
+import os
 import uuid
 
 from prometheus_client import start_http_server
@@ -10,6 +12,14 @@ from app.services.collectors.binance_exchange_collector import \
     BinanceExchangeCollector
 
 launch_id = uuid.uuid4()
+
+
+def run_celery_worker():
+    os.system("celery -A app.common.worker.worker worker --loglevel=info")
+
+
+def run_celery_beat():
+    os.system("celery -A app.common.worker.worker beat --loglevel=info")
 
 
 async def main():
@@ -43,6 +53,15 @@ async def main():
 
 
 if __name__ == "__main__":
+    logging.info("Starting application...")
+
+    logging.info("Starting Celery worker and beat")
+    worker_process = multiprocessing.Process(target=run_celery_worker)
+    worker_process.start()
+
+    beat_process = multiprocessing.Process(target=run_celery_beat)
+    beat_process.start()
+
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

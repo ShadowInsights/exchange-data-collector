@@ -28,14 +28,14 @@ docker-compose up -d
 poetry run alembic upgrade head
 ```
 
-### Run the main.py script
+### Run the application
 
 ```sh
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
-poetry run python main.py
+poetry run python ./app/main.py
 ```
 
-### Run workers
+### Run workers separately
 
 ```
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
