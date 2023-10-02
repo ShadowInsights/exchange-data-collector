@@ -18,7 +18,7 @@ launch_id = uuid.uuid4()
 def start_metrics_server():
     logging.info("Starting metrics server")
 
-    start_http_server(8000)
+    start_http_server(8080)
 
     logging.info("Metrics server started")
 
