@@ -21,9 +21,6 @@ class Settings(BaseSettings):
     POSTGRES_USERNAME: str
     POSTGRES_PASSWORD: str
 
-    REDIS_HOST: str
-    REDIS_PORT: str
-
     # GOOGLE_APPLICATION_CREDENTIALS: str
     GOOGLE_CLOUD_BUCKET_NAME: str
 
