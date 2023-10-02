@@ -1,6 +1,5 @@
 import logging
 
-from celery import Celery
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
@@ -63,21 +62,3 @@ DB_CONNECTION_STRING_ASYNC = pg_dsn(
     password=settings.POSTGRES_PASSWORD,
     schema="postgresql+asyncpg://",
 )
-
-celery = Celery(
-    "exchange-data-collector",
-    broker=f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0",
-    backend=f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0",
-    task_serializer="json",
-    result_serializer="json",
-    accept_content=["json"],
-    timezone="UTC",
-)
-
-celery.conf.ONCE = {
-    "backend": "celery_once.backends.Redis",
-    "settings": {
-        "url": f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0",
-        "default_timeout": 60 * 60,  # 1 hour by default, change as needed
-    },
-}

@@ -34,11 +34,3 @@ poetry run alembic upgrade head
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
 poetry run python ./app/main.py
 ```
-
-### Run workers separately
-
-```
-export PYTHONPATH="$PYTHONPATH:$(pwd)"
-poetry run celery -A app.common.worker.worker worker --loglevel=info
-poetry run celery -A app.common.worker.worker beat --loglevel=info
-```

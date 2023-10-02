@@ -2,12 +2,11 @@ import logging
 from datetime import datetime
 from typing import Iterator, List
 
-from celery_once import QueueOnce
 from google.cloud import storage
 from google.cloud.storage import Blob, Bucket
 from sqlalchemy.orm.session import Session
 
-from app.common.config import celery, settings
+from app.common.config import settings
 from app.common.database import get_sync_db
 from app.db.models.order_book import OrderBookModel
 
@@ -75,7 +74,6 @@ def _upload_to_gcs(data: List[str], bucket: Bucket, blob_name: str) -> None:
     temp_blob.delete()
 
 
-@celery.task(base=QueueOnce, once={"graceful": True})
 def order_book_table_truncate_and_backup() -> None:
     logger.info("Starting order book table backup...")
 
