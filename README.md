@@ -22,9 +22,15 @@ poetry install
 docker-compose up -d
 ```
 
-### Run the main.py script
+### Run migrations
+
+```sh
+poetry run alembic upgrade head
+```
+
+### Run the application
 
 ```sh
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
-poetry run python main.py
+poetry run python ./app/main.py
 ```

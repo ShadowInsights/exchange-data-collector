@@ -10,3 +10,9 @@ services:
       POSTGRES_DB: exchange_data_collector
     ports:
       - 5432:5432
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - 6379:6379

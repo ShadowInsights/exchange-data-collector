@@ -2,35 +2,46 @@ import asyncio
 import logging
 import uuid
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from prometheus_client import start_http_server
 
-from app.db.common import get_db
+from app.common.database import get_async_db
 from app.db.repositories.pair_repository import find_all_pairs
 from app.services.collectors.binance_exchange_collector import \
     BinanceExchangeCollector
+from app.workers.order_book_worker import order_book_table_truncate_and_backup
 
 launch_id = uuid.uuid4()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(filename)s] %(levelname)s %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-    ],
-)
 
+def start_metrics_server():
+    logging.info("Starting metrics server")
 
-async def main():
-    logging.info("Starting Prometheus server")
     start_http_server(8080)
 
+    logging.info("Metrics server started")
+
+
+def start_scheduler():
+    logging.info("Starting scheduler")
+
+    scheduler = BackgroundScheduler()
+    trigger = CronTrigger(hour=22, minute=30, second=0, timezone="UTC")
+    scheduler.add_job(order_book_table_truncate_and_backup, trigger=trigger)
+    scheduler.start()
+
+    logging.info("Scheduler started")
+
+
+async def start_collectors():
     logging.info("Starting data collection")
     logging.info(f"Launch ID: {launch_id}")
 
     tasks = []  # List to store tasks
     pairs = []  # List to store pairs
 
-    async with get_db() as session:
+    async with get_async_db() as session:
         pairs = await find_all_pairs(session)
 
     for pair in pairs:
@@ -51,8 +62,12 @@ async def main():
 
 
 if __name__ == "__main__":
+    logging.info("Starting application...")
+
     try:
-        asyncio.run(main())
+        start_metrics_server()
+        start_scheduler()
+        asyncio.run(start_collectors())
     except KeyboardInterrupt:
         logging.info("\nInterrupted. Closing application...")
     except Exception as e:
