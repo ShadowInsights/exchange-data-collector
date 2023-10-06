@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.order_book import OrderBookModel
 
 
-async def crate_order_book(
+async def create_order_book(
     session: AsyncSession,
     launch_id: UUID,
     stamp_id: int,
