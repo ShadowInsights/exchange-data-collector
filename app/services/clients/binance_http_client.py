@@ -1,7 +1,9 @@
 import httpx
 
-from app.services.clients.schemas.binance import (OrderBookEntry,
-                                                  OrderBookSnapshot)
+from app.services.clients.schemas.binance import (
+    OrderBookEntry,
+    OrderBookSnapshot,
+)
 
 
 class BinanceHttpClient:

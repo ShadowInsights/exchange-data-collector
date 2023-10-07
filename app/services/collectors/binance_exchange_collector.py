@@ -5,11 +5,14 @@ from typing import Dict
 from uuid import UUID
 
 from app.services.clients.binance_http_client import BinanceHttpClient
-from app.services.clients.binance_websocket_client import \
-    BinanceWebsocketClient
+from app.services.clients.binance_websocket_client import (
+    BinanceWebsocketClient,
+)
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.workers.db_worker import DbWorker
 from app.services.collectors.workers.liquidity_worker import LiquidityWorker
+from app.services.messengers.base_messenger import BaseMessenger
+from app.utils.math_utils import recalc_avg
 
 
 class BinanceExchangeCollector:
@@ -20,6 +23,7 @@ class BinanceExchangeCollector:
         exchange_id: UUID,
         symbol: str,
         delimiter: Decimal,
+        messenger: BaseMessenger,
     ):
         self.order_book = OrderBookSnapshot(0, {}, {})
         self.launch_id = launch_id
@@ -27,7 +31,8 @@ class BinanceExchangeCollector:
         self.symbol = symbol
         self.delimiter = delimiter
         self.avg_volume = 0
-        self.update_counter = 0
+        self.volume_counter = 0
+        self.messenger = messenger
         self._http_client = BinanceHttpClient(symbol)
         self._ws_client = BinanceWebsocketClient(symbol)
         self._exchange_id = exchange_id
@@ -48,8 +53,7 @@ class BinanceExchangeCollector:
         )
         last_update_id = self.order_book.lastUpdateId
 
-        # Update average volume of order books
-        self.update_counter += 1
+        # Init average volume of order books
         self._update_avg_volume()
 
         logging.info(
@@ -83,7 +87,6 @@ class BinanceExchangeCollector:
                 self._update_order_book(self.order_book.asks, ask)
 
             # Update average volume of order books
-            self.update_counter += 1
             self._update_avg_volume()
 
     def _update_order_book(
@@ -100,7 +103,9 @@ class BinanceExchangeCollector:
             order_book[price] = quantity
 
     def _update_avg_volume(self) -> None:
-        logging.info(f"Updating average volume")
+        logging.debug(f"Updating average volume")
+
+        self.volume_counter += 1
 
         total_volume = 0
 
@@ -112,9 +117,19 @@ class BinanceExchangeCollector:
             total_volume += float(price) * float(quantity)
 
         # Set new average volume
-        counter = self.update_counter - 1
-        summ = self.avg_volume * counter
-        self.avg_volume = (summ + total_volume) / self.update_counter
+        self.avg_volume = recalc_avg(
+            avg=self.avg_volume,
+            counter=self.volume_counter,
+            value=total_volume,
+        )
 
-        logging.info(f"Total volume of the current order books - {total_volume}")
-        logging.info(f"New average volume is {self.avg_volume}")
+        logging.debug(
+            f"Total volume of update №{self.volume_counter}  - {total_volume}"
+        )
+        logging.debug(f"New average volume is {self.avg_volume}")
+
+    def clear_volume_stats(self):
+        logging.debug("Cleaning volume stats")
+
+        self.avg_volume = 0
+        self.volume_counter = 0

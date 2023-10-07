@@ -2,8 +2,10 @@ import json
 
 import websockets
 
-from app.services.clients.schemas.binance import (DepthUpdateEvent,
-                                                  OrderBookEntry)
+from app.services.clients.schemas.binance import (
+    DepthUpdateEvent,
+    OrderBookEntry,
+)
 
 
 class BinanceWebsocketClient:

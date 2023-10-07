@@ -8,8 +8,13 @@ from prometheus_client import start_http_server
 
 from app.common.database import get_async_db
 from app.db.repositories.pair_repository import find_all_pairs
-from app.services.collectors.binance_exchange_collector import \
-    BinanceExchangeCollector
+from app.services.collectors.binance_exchange_collector import (
+    BinanceExchangeCollector,
+)
+from app.services.collectors.workers.liquidity_worker import (
+    fill_missed_liquidity_intervals,
+)
+from app.services.messengers.discord_messenger import DiscordMessenger
 from app.workers.order_book_worker import order_book_table_truncate_and_backup
 
 launch_id = uuid.uuid4()
@@ -34,6 +39,15 @@ def start_scheduler():
     logging.info("Scheduler started")
 
 
+async def main():
+    tasks = [
+        asyncio.create_task(fill_missed_liquidity_intervals()),
+        asyncio.create_task(start_collectors()),
+    ]
+
+    await asyncio.gather(*tasks)
+
+
 async def start_collectors():
     logging.info("Starting data collection")
     logging.info(f"Launch ID: {launch_id}")
@@ -44,6 +58,8 @@ async def start_collectors():
     async with get_async_db() as session:
         pairs = await find_all_pairs(session)
 
+    messenger = DiscordMessenger()
+
     for pair in pairs:
         collector = BinanceExchangeCollector(
             launch_id=launch_id,
@@ -51,6 +67,7 @@ async def start_collectors():
             exchange_id=pair.exchange_id,
             symbol=pair.symbol,
             delimiter=pair.delimiter,
+            messenger=messenger,
         )
 
         # Schedule the collector's task to run
@@ -67,7 +84,8 @@ if __name__ == "__main__":
     try:
         start_metrics_server()
         # start_scheduler()
-        asyncio.run(start_collectors())
+
+        asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("\nInterrupted. Closing application...")
     except Exception as e:

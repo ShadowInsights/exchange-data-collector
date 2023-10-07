@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     ORDER_BOOKS_TABLE_DUMP_LIMIT: int
     ORDER_BOOKS_TABLE_DUMP_BUFFER_MAX_SIZE: int
 
+    LIQUIDITY_WORKER_JOB_INTERVAL: int = 5
+
+    LIQUIDITY_ANOMALY_RATIO: int
+    COMPARABLE_LIQUIDITY_SET_SIZE: int
+
+    DISCORD_WEBHOOKS: str
+
 
 settings = Settings()
 
