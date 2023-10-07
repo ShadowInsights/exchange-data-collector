@@ -10,11 +10,9 @@ from app.common.config import settings
 from app.common.database import get_async_db
 from app.db.models.liquidity import Liquidity
 from app.db.repositories.exchange_repository import find_exchange_by_id
-from app.db.repositories.liquidity_repository import (
-    find_last_n_liquidity,
-    save_all_liquidity,
-    save_liquidity,
-)
+from app.db.repositories.liquidity_repository import (find_last_n_liquidity,
+                                                      save_all_liquidity,
+                                                      save_liquidity)
 from app.db.repositories.order_book_repository import find_all_between
 from app.db.repositories.pair_repository import find_all_pairs, find_pair_by_id
 from app.services.collectors.workers.db_worker import Worker, set_interval
@@ -34,10 +32,14 @@ class LiquidityWorker(Worker):
         async with (get_async_db() as session):
             # Check avg volume for anomaly based on last n avg volumes
             if await self._is_anomaly(session):
-                logging.info(f"Found anomaly inflow of volume. Sending alert notification...")
+                logging.info(
+                    f"Found anomaly inflow of volume. Sending alert notification..."
+                )
 
                 # Send alert notification via standard messenger implementation
-                asyncio.create_task(self._send_notification(pair_id=self._collector.pair_id))
+                asyncio.create_task(
+                    self._send_notification(pair_id=self._collector.pair_id)
+                )
 
                 # Save  runtime liquidity record
                 await save_liquidity(

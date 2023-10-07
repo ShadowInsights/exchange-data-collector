@@ -5,11 +5,8 @@ from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, create_engine, text
 from sqlalchemy.dialects.postgresql import UUID as pg_UUID
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
+                                    create_async_engine)
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.common.config import DB_CONNECTION_STRING, DB_CONNECTION_STRING_ASYNC

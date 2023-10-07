@@ -8,12 +8,10 @@ from prometheus_client import start_http_server
 
 from app.common.database import get_async_db
 from app.db.repositories.pair_repository import find_all_pairs
-from app.services.collectors.binance_exchange_collector import (
-    BinanceExchangeCollector,
-)
-from app.services.collectors.workers.liquidity_worker import (
-    fill_missed_liquidity_intervals,
-)
+from app.services.collectors.binance_exchange_collector import \
+    BinanceExchangeCollector
+from app.services.collectors.workers.liquidity_worker import \
+    fill_missed_liquidity_intervals
 from app.services.messengers.discord_messenger import DiscordMessenger
 from app.workers.order_book_worker import order_book_table_truncate_and_backup
 

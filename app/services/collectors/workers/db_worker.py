@@ -9,12 +9,10 @@ from typing import Dict
 from app.common.database import get_async_db
 from app.db.repositories.order_book_repository import create_order_book
 from app.services.collectors.common import OrderBook
-from app.utils.time_utils import (
-    LONDON_TRADING_SESSION,
-    NEW_YORK_TRADING_SESSION,
-    TOKYO_TRADING_SESSION,
-    is_current_time_inside_trading_sessions,
-)
+from app.utils.time_utils import (LONDON_TRADING_SESSION,
+                                  NEW_YORK_TRADING_SESSION,
+                                  TOKYO_TRADING_SESSION,
+                                  is_current_time_inside_trading_sessions)
 
 trading_sessions = [
     TOKYO_TRADING_SESSION,

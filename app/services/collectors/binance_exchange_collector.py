@@ -5,9 +5,8 @@ from typing import Dict
 from uuid import UUID
 
 from app.services.clients.binance_http_client import BinanceHttpClient
-from app.services.clients.binance_websocket_client import (
-    BinanceWebsocketClient,
-)
+from app.services.clients.binance_websocket_client import \
+    BinanceWebsocketClient
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.workers.db_worker import DbWorker
 from app.services.collectors.workers.liquidity_worker import LiquidityWorker
