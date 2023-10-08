@@ -1,4 +1,4 @@
-def add_dots_every_n_symbols(input: int, n):
+def add_comma_every_n_symbols(input: int, n):
     if n <= 0:
         return input
 
@@ -7,7 +7,7 @@ def add_dots_every_n_symbols(input: int, n):
 
     for i, char in enumerate(reversed_input):
         if i > 0 and i % n == 0:
-            result.append(".")
+            result.append(",")
         result.append(char)
 
     # Reverse the result back to the original order

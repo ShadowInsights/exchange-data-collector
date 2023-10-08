@@ -21,7 +21,7 @@ from app.services.collectors.workers.common import Worker
 from app.services.collectors.workers.db_worker import set_interval
 from app.services.messengers.common import BaseMessage, Field
 from app.utils.math_utils import calc_avg, recalc_avg
-from app.utils.string_utils import add_dots_every_n_symbols
+from app.utils.string_utils import add_comma_every_n_symbols
 from app.utils.time_utils import is_current_time_inside_trading_sessions
 
 NON_EXIST_BEGIN_TIME = datetime.datetime.fromtimestamp(1609459200)
@@ -84,7 +84,7 @@ class LiquidityWorker(Worker):
         # Check avg volume for anomaly based on last n avg volumes
         deviation = self._calculate_deviation()
 
-        if deviation < settings.LIQUIDITY_ANOMALY_RATIO:
+        if deviation > settings.LIQUIDITY_ANOMALY_RATIO or deviation < (1/settings.LIQUIDITY_ANOMALY_RATIO):
             logging.info(
                 f"Found anomaly inflow of volume. Sending alert notification..."
             )
@@ -138,12 +138,18 @@ class LiquidityWorker(Worker):
             exchange = await find_exchange_by_id(session, id=pair.exchange_id)
 
         # Formatting message
-        title = "Volume Anomaly"
-        description = f"Increased volume inflow was detected for {pair.symbol} on {exchange.name}"
+        title = "Depth Anomaly"
+
+        if deviation < 1:
+            depth_change_vector = "Decreased"
+        else:
+            depth_change_vector = "Increased"
+
+        description = f"{depth_change_vector} depth was detected for {pair.symbol} on {exchange.name}"
         deviation = Field(name="Deviation", value="{:.2f}".format(deviation))
         volume_changes_field = Field(
-            name="Volume changes",
-            value=f"Current: {add_dots_every_n_symbols(current_avg_volume, 3)}\nPrevious: {add_dots_every_n_symbols(previous_avg_volume, 3)}",
+            name="Depth changes",
+            value=f"Current: {add_comma_every_n_symbols(current_avg_volume, 3)}\nPrevious: {add_comma_every_n_symbols(previous_avg_volume, 3)}",
         )
 
         # Construct message to send
