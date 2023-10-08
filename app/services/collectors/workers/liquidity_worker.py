@@ -84,7 +84,7 @@ class LiquidityWorker(Worker):
         # Check avg volume for anomaly based on last n avg volumes
         deviation = self._calculate_deviation()
 
-        if deviation > settings.LIQUIDITY_ANOMALY_RATIO:
+        if deviation > settings.LIQUIDITY_ANOMALY_RATIO or deviation < (1/settings.LIQUIDITY_ANOMALY_RATIO):
             logging.info(
                 f"Found anomaly inflow of volume. Sending alert notification..."
             )
