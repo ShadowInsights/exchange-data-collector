@@ -10,7 +10,6 @@ from app.common.config import settings
 from app.common.database import get_sync_db
 from app.db.models.order_book import OrderBookModel
 
-storage_client = storage.Client()
 logger = logging.getLogger(__name__)
 
 
@@ -79,6 +78,7 @@ def order_book_table_truncate_and_backup() -> None:
 
     total_rows = 0
 
+    storage_client = storage.Client()
     bucket = storage_client.bucket(settings.GOOGLE_CLOUD_BUCKET_NAME)
     blob_name = f"order-books-{datetime.utcnow().strftime('%Y-%m-%d')}.csv"
 
