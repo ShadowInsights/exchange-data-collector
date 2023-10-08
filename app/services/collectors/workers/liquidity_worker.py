@@ -7,55 +7,32 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.config import settings
-from app.common.database import get_async_db
+from app.common.database import get_async_db, get_sync_db
 from app.db.models.liquidity import Liquidity
 from app.db.repositories.exchange_repository import find_exchange_by_id
-from app.db.repositories.liquidity_repository import (find_last_n_liquidity,
-                                                      save_all_liquidity,
-                                                      save_liquidity)
-from app.db.repositories.order_book_repository import find_all_between
+from app.db.repositories.liquidity_repository import (
+    find_last_n_liquidity, find_sync_last_n_liquidity, save_all_liquidity,
+    save_liquidity)
+from app.db.repositories.order_book_repository import \
+    find_all_between_time_range
 from app.db.repositories.pair_repository import find_all_pairs, find_pair_by_id
-from app.services.collectors.workers.db_worker import Worker, set_interval
+from app.services.collectors.common import trading_sessions
+from app.services.collectors.workers.common import Worker
+from app.services.collectors.workers.db_worker import set_interval
 from app.services.messengers.common import BaseMessage
 from app.utils.math_utils import recalc_avg
+from app.utils.time_utils import is_current_time_inside_trading_sessions
+
+NON_EXIST_BEGIN_TIME = datetime.datetime.fromtimestamp(1609459200)
 
 
 class LiquidityWorker(Worker):
     def __init__(self, collector):
         self._collector = collector
-        self._last_avg_volumes = []
 
-    @set_interval(settings.LIQUIDITY_WORKER_JOB_INTERVAL)
-    async def run(self):
-        logging.debug("Saving liquidity record")
-
-        async with (get_async_db() as session):
-            # Check avg volume for anomaly based on last n avg volumes
-            if await self._is_anomaly(session):
-                logging.info(
-                    f"Found anomaly inflow of volume. Sending alert notification..."
-                )
-
-                # Send alert notification via standard messenger implementation
-                asyncio.create_task(
-                    self._send_notification(pair_id=self._collector.pair_id)
-                )
-
-                # Save  runtime liquidity record
-                await save_liquidity(
-                    session,
-                    avg_volume=self._collector.avg_volume,
-                    launch_id=self._collector.launch_id,
-                    pair_id=self._collector.pair_id,
-                )
-
-        self._collector.clear_volume_stats()
-
-    async def _is_anomaly(self, session: AsyncSession) -> bool:
-        # if comparable liquidity set size is empty, fill it once from db
-        if len(self._last_avg_volumes) == 0:
+        with get_sync_db() as session:
             # Get last n liquidity records by pair id
-            last_liquidity_records = await find_last_n_liquidity(
+            last_liquidity_records = find_sync_last_n_liquidity(
                 session,
                 self._collector.pair_id,
                 settings.COMPARABLE_LIQUIDITY_SET_SIZE,
@@ -67,6 +44,40 @@ class LiquidityWorker(Worker):
                 for liquidity in last_liquidity_records
             ]
 
+    @set_interval(settings.LIQUIDITY_WORKER_JOB_INTERVAL)
+    async def run(self):
+        # Check if there's active trading session to commit average volume
+        if (
+            not is_current_time_inside_trading_sessions(trading_sessions)
+            and not settings.PYTHON_ENV == "DEV"
+        ):
+            return
+
+        logging.debug("Saving liquidity record")
+
+        async with (get_async_db() as session):
+            # Save  runtime liquidity record
+            await save_liquidity(
+                session,
+                avg_volume=self._collector.avg_volume,
+                launch_id=self._collector.launch_id,
+                pair_id=self._collector.pair_id,
+            )
+
+        # Check avg volume for anomaly based on last n avg volumes
+        if self._is_anomaly():
+            logging.info(
+                f"Found anomaly inflow of volume. Sending alert notification..."
+            )
+
+            # Send alert notification via standard messenger implementation
+            asyncio.create_task(
+                self._send_notification(pair_id=self._collector.pair_id)
+            )
+
+        self._collector.clear_volume_stats()
+
+    def _is_anomaly(self) -> bool:
         # if comparable liquidity set size is optimal, then check for anomaly
         if (
             len(self._last_avg_volumes)
@@ -106,8 +117,8 @@ class LiquidityWorker(Worker):
             description = f"Increased volume inflow was detected for {pair.symbol} on {exchange.name}"
             body = BaseMessage(title=title, description=description, fields=[])
 
-            # Sending message
-            await self._collector.messenger.send(body)
+        # Sending message
+        await self._collector.messenger.send(body)
 
 
 async def fill_missed_liquidity_intervals() -> None:
@@ -128,9 +139,7 @@ async def fill_missed_liquidity_intervals() -> None:
                 )
             else:
                 # Set default value
-                last_processed_time = datetime.datetime.fromtimestamp(
-                    1609459200
-                )
+                last_processed_time = NON_EXIST_BEGIN_TIME
 
             # Add missed liquidity records between latest liquidity record time and current time
             liquidity_records = await _append_missed_liquidity_records(
@@ -154,7 +163,7 @@ async def _append_missed_liquidity_records(
     )
 
     # Fetching unhandled order_books in interval between last liquidity record and time that we already monitor
-    order_books = await find_all_between(
+    order_books = await find_all_between_time_range(
         session,
         begin_time=begin_time,
         end_time=end_time,

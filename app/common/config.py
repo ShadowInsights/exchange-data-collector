@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     POSTGRES_USERNAME: str
     POSTGRES_PASSWORD: str
 
+    PYTHON_ENV: str
+
     # GOOGLE_APPLICATION_CREDENTIALS: str
     GOOGLE_CLOUD_BUCKET_NAME: str
 
@@ -28,11 +30,13 @@ class Settings(BaseSettings):
     ORDER_BOOKS_TABLE_DUMP_BUFFER_MAX_SIZE: int
 
     LIQUIDITY_WORKER_JOB_INTERVAL: int = 5
+    DB_WORKER_JOB_INTERVAL: int
 
     LIQUIDITY_ANOMALY_RATIO: int
     COMPARABLE_LIQUIDITY_SET_SIZE: int
 
     DISCORD_WEBHOOKS: str
+    DISCORD_EMBED_COLOR: str
 
 
 settings = Settings()

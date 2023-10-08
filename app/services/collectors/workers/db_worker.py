@@ -1,36 +1,16 @@
 import asyncio
 import json
 import logging
-from abc import ABC, abstractmethod
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict
 
+from app.common.config import settings
 from app.common.database import get_async_db
 from app.db.repositories.order_book_repository import create_order_book
-from app.services.collectors.common import OrderBook
-from app.utils.time_utils import (LONDON_TRADING_SESSION,
-                                  NEW_YORK_TRADING_SESSION,
-                                  TOKYO_TRADING_SESSION,
-                                  is_current_time_inside_trading_sessions)
-
-trading_sessions = [
-    TOKYO_TRADING_SESSION,
-    LONDON_TRADING_SESSION,
-    NEW_YORK_TRADING_SESSION,
-]
-
-
-def set_interval(seconds):
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
-            while True:
-                await asyncio.sleep(seconds)
-                await func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
+from app.services.collectors.common import OrderBook, trading_sessions
+from app.services.collectors.workers.common import Worker, set_interval
+from app.utils.time_utils import is_current_time_inside_trading_sessions
 
 
 def handle_decimal_type(obj):
@@ -39,26 +19,22 @@ def handle_decimal_type(obj):
     raise TypeError
 
 
-class Worker(ABC):
-    @abstractmethod
-    async def run(self):
-        pass
-
-
 class DbWorker(Worker):
     def __init__(self, collector):
         self._collector = collector
         self._stamp_id = 0
 
-    @set_interval(1)
+    @set_interval(settings.DB_WORKER_JOB_INTERVAL)
     async def run(self):
         asyncio.create_task(self.__db_worker())
 
     async def __db_worker(self):
-        # if not is_current_time_inside_trading_sessions(
-        #         trading_sessions
-        # ):
-        #     return
+        # Check if there's active trading session to commit average volume
+        if (
+            not is_current_time_inside_trading_sessions(trading_sessions)
+            and not settings.PYTHON_ENV == "DEV"
+        ):
+            return
 
         start_time = datetime.now()
         logging.debug(

@@ -8,10 +8,12 @@ from app.services.clients.binance_http_client import BinanceHttpClient
 from app.services.clients.binance_websocket_client import \
     BinanceWebsocketClient
 from app.services.clients.schemas.binance import OrderBookSnapshot
+from app.services.collectors.common import trading_sessions
 from app.services.collectors.workers.db_worker import DbWorker
 from app.services.collectors.workers.liquidity_worker import LiquidityWorker
 from app.services.messengers.base_messenger import BaseMessenger
 from app.utils.math_utils import recalc_avg
+from app.utils.time_utils import is_current_time_inside_trading_sessions
 
 
 class BinanceExchangeCollector:

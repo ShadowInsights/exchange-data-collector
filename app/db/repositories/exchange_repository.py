@@ -8,7 +8,7 @@ from app.db.models.exchange import ExchangeModel
 
 async def find_exchange_by_id(
     session: AsyncSession, id: UUID
-) -> ExchangeModel:
+) -> ExchangeModel | None:
     result = await session.execute(
         select(ExchangeModel).where(ExchangeModel.id == id)
     )
