@@ -1,6 +1,6 @@
 import logging
 
-from discord_webhook import DiscordEmbed, DiscordWebhook
+from discord_webhook import AsyncDiscordWebhook, DiscordEmbed
 
 from app.common.config import settings
 from app.services.messengers.base_messenger import BaseMessenger
@@ -10,7 +10,7 @@ from app.services.messengers.common import BaseMessage
 class DiscordMessenger(BaseMessenger):
     def __init__(self):
         self.webhooks = [
-            DiscordWebhook(
+            AsyncDiscordWebhook(
                 webhook_url, rate_limit_retry=True, username="Anomaly Alerting"
             )
             for webhook_url in settings.DISCORD_WEBHOOKS.split(",")
@@ -24,7 +24,7 @@ class DiscordMessenger(BaseMessenger):
 
             webhook.add_embed(self._generate_message(message=message))
 
-            webhook.execute(remove_embeds=True)
+            await webhook.execute(remove_embeds=True)
         except Exception as error:
             logging.error(f"Error while sending alert notification: {error}")
 
@@ -38,7 +38,7 @@ class DiscordMessenger(BaseMessenger):
 
         for field in message.fields:
             embed.add_embed_field(
-                name=field.name, value=field.value, inline=False
+                name=field.name, value=field.value, inline=True
             )
 
         return embed
