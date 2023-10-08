@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     POSTGRES_USERNAME: str
     POSTGRES_PASSWORD: str
 
-    PYTHON_ENV: str
+    PYTHON_ENV: str = None
 
     # GOOGLE_APPLICATION_CREDENTIALS: str
     GOOGLE_CLOUD_BUCKET_NAME: str
