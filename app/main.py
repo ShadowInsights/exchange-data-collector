@@ -18,7 +18,7 @@ from app.workers.order_book_worker import order_book_table_truncate_and_backup
 launch_id = uuid.uuid4()
 
 
-def start_metrics_server():
+def start_metrics_server() -> None:
     logging.info("Starting metrics server")
 
     start_http_server(8080)
@@ -26,7 +26,7 @@ def start_metrics_server():
     logging.info("Metrics server started")
 
 
-def start_scheduler():
+def start_scheduler() -> None:
     logging.info("Starting scheduler")
 
     scheduler = BackgroundScheduler()
@@ -37,7 +37,7 @@ def start_scheduler():
     logging.info("Scheduler started")
 
 
-async def main():
+async def main() -> None:
     tasks = [
         asyncio.create_task(fill_missed_liquidity_intervals()),
         asyncio.create_task(start_collectors()),
@@ -46,7 +46,7 @@ async def main():
     await asyncio.gather(*tasks)
 
 
-async def start_collectors():
+async def start_collectors() -> None:
     logging.info("Starting data collection")
     logging.info(f"Launch ID: {launch_id}")
 

@@ -16,19 +16,20 @@ from app.db.repositories.liquidity_repository import (
 from app.db.repositories.order_book_repository import \
     find_all_between_time_range
 from app.db.repositories.pair_repository import find_all_pairs, find_pair_by_id
-from app.services.collectors.common import trading_sessions
+from app.services.collectors.binance_exchange_collector import \
+    BinanceExchangeCollector
 from app.services.collectors.workers.common import Worker
 from app.services.collectors.workers.db_worker import set_interval
 from app.services.messengers.common import BaseMessage, Field
 from app.utils.math_utils import calc_avg, recalc_avg
 from app.utils.string_utils import add_comma_every_n_symbols
-from app.utils.time_utils import is_current_time_inside_trading_sessions
 
 NON_EXIST_BEGIN_TIME = datetime.datetime.fromtimestamp(1609459200)
 
 
 class LiquidityWorker(Worker):
-    def __init__(self, collector):
+    # TODO: Create a base class for all collectors
+    def __init__(self, collector: BinanceExchangeCollector):
         self._collector = collector
 
         with get_sync_db() as session:
@@ -46,14 +47,10 @@ class LiquidityWorker(Worker):
             ]
 
     @set_interval(settings.LIQUIDITY_WORKER_JOB_INTERVAL)
-    async def run(self):
-        # Check if there's active trading session to commit average volume
-        if (
-            not is_current_time_inside_trading_sessions(trading_sessions)
-            and not settings.PYTHON_ENV == "DEV"
-        ):
-            return
+    async def run(self) -> None:
+        await super().run()
 
+    async def _run_worker(self) -> None:
         logging.debug("Saving liquidity record")
 
         async with (get_async_db() as session):
@@ -68,7 +65,7 @@ class LiquidityWorker(Worker):
         # Perform anomaly analysis
         asyncio.create_task(self._perform_anomaly_analysis())
 
-    async def _perform_anomaly_analysis(self):
+    async def _perform_anomaly_analysis(self) -> None:
         # if comparable liquidity set size is not optimal, then just add saved liquidity record to set
         if (
             len(self._last_avg_volumes)
@@ -84,9 +81,11 @@ class LiquidityWorker(Worker):
         # Check avg volume for anomaly based on last n avg volumes
         deviation = self._calculate_deviation()
 
-        if deviation > settings.LIQUIDITY_ANOMALY_RATIO or deviation < (1/settings.LIQUIDITY_ANOMALY_RATIO):
+        if deviation > settings.LIQUIDITY_ANOMALY_RATIO or deviation < (
+            1 / settings.LIQUIDITY_ANOMALY_RATIO
+        ):
             logging.info(
-                f"Found anomaly inflow of volume. Sending alert notification..."
+                "Found anomaly inflow of volume. Sending alert notification..."
             )
 
             # Send alert notification via standard messenger implementation
@@ -121,7 +120,8 @@ class LiquidityWorker(Worker):
         # Calculate deviation for avg volume of current time interval in comparison to last n volumes
         deviation = self._collector.avg_volume / common_avg_volume
         logging.debug(
-            f"Deviation for {self._collector.avg_volume} volume in comparison to common {common_avg_volume} volume - {deviation}"
+            f"Deviation for {self._collector.avg_volume} volume in comparison "
+            f"to common {common_avg_volume} volume - {deviation}"
         )
 
         return deviation
@@ -132,7 +132,7 @@ class LiquidityWorker(Worker):
         deviation: float,
         current_avg_volume: int,
         previous_avg_volume: int,
-    ):
+    ) -> None:
         async with get_async_db() as session:
             pair = await find_pair_by_id(session, id=pair_id)
             exchange = await find_exchange_by_id(session, id=pair.exchange_id)
@@ -149,7 +149,8 @@ class LiquidityWorker(Worker):
         deviation = Field(name="Deviation", value="{:.2f}".format(deviation))
         volume_changes_field = Field(
             name="Depth changes",
-            value=f"Current: {add_comma_every_n_symbols(current_avg_volume, 3)}\nPrevious: {add_comma_every_n_symbols(previous_avg_volume, 3)}",
+            value=f"Current: {add_comma_every_n_symbols(current_avg_volume, 3)}\nPrevious: "
+            f"{add_comma_every_n_symbols(previous_avg_volume, 3)}",
         )
 
         # Construct message to send

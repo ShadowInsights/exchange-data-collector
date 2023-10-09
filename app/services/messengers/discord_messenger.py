@@ -17,7 +17,7 @@ class DiscordMessenger(BaseMessenger):
         ]
         self._embed_color = settings.DISCORD_EMBED_COLOR
 
-    async def send(self, message: BaseMessage):
+    async def send(self, message: BaseMessage) -> None:
         try:
             webhook = self.webhooks.pop(0)
             self.webhooks.append(webhook)
