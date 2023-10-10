@@ -81,8 +81,7 @@ if __name__ == "__main__":
 
     try:
         start_metrics_server()
-        # start_scheduler()
-
+        start_scheduler()
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("\nInterrupted. Closing application...")
