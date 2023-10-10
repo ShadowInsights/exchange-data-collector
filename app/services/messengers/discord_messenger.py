@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from discord_webhook import AsyncDiscordWebhook, DiscordEmbed
@@ -9,6 +10,8 @@ from app.services.messengers.common import BaseMessage
 
 class DiscordMessenger(BaseMessenger):
     def __init__(self):
+        super().__init__()
+        self.lock = asyncio.Lock()
         self.webhooks = [
             AsyncDiscordWebhook(
                 webhook_url, rate_limit_retry=True, username="Anomaly Alerting"
@@ -17,14 +20,15 @@ class DiscordMessenger(BaseMessenger):
         ]
         self._embed_color = settings.DISCORD_EMBED_COLOR
 
-    async def send(self, message: BaseMessage):
+    async def send(self, message: BaseMessage) -> None:
         try:
-            webhook = self.webhooks.pop(0)
-            self.webhooks.append(webhook)
+            async with self.lock:
+                webhook = self.webhooks.pop(0)
+                self.webhooks.append(webhook)
 
-            webhook.add_embed(self._generate_message(message=message))
+                webhook.add_embed(self._generate_message(message=message))
 
-            await webhook.execute(remove_embeds=True)
+                await webhook.execute(remove_embeds=True)
         except Exception as error:
             logging.error(f"Error while sending alert notification: {error}")
 

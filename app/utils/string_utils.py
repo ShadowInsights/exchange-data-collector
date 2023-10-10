@@ -1,4 +1,4 @@
-def add_comma_every_n_symbols(input: int, n):
+def add_comma_every_n_symbols(input: int, n) -> str:
     if n <= 0:
         return input
 

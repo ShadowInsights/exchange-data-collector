@@ -1,3 +1,4 @@
+import time as t
 from datetime import datetime, time
 
 
@@ -37,3 +38,7 @@ def is_current_time_inside_trading_sessions(
             return True
 
     return False
+
+
+def get_current_time() -> float:
+    return t.time()

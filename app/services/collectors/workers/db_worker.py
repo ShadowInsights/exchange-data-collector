@@ -1,56 +1,54 @@
 import asyncio
+import copy
 import json
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict
 
 from app.common.config import settings
 from app.common.database import get_async_db
 from app.db.repositories.order_book_repository import create_order_book
-from app.services.collectors.common import OrderBook, trading_sessions
+from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker, set_interval
-from app.utils.time_utils import is_current_time_inside_trading_sessions
 
 
-def handle_decimal_type(obj):
+def handle_decimal_type(obj) -> str:
     if isinstance(obj, Decimal):
         return str(obj)
     raise TypeError
 
 
 class DbWorker(Worker):
-    def __init__(self, collector):
+    # TODO: Create a base class for all collectors
+    def __init__(self, collector: Collector):
         self._collector = collector
         self._stamp_id = 0
 
     @set_interval(settings.DB_WORKER_JOB_INTERVAL)
-    async def run(self):
+    async def run(self) -> None:
+        await super().run()
+
+    async def _run_worker(self) -> None:
         asyncio.create_task(self.__db_worker())
 
-    async def __db_worker(self):
-        # Check if there's active trading session to commit average volume
-        if (
-            not is_current_time_inside_trading_sessions(trading_sessions)
-            and not settings.PYTHON_ENV == "DEV"
-        ):
-            return
-
+    async def __db_worker(self) -> None:
         start_time = datetime.now()
         logging.debug(
             f"Worker function cycle started [symbol={self._collector.symbol}]"
         )
 
+        collector_current_order_book = copy.deepcopy(
+            self._collector.order_book
+        )
+        order_book = OrderBook(
+            a=self.group_order_book(
+                collector_current_order_book.asks, self._collector.delimiter
+            ),
+            b=self.group_order_book(
+                collector_current_order_book.bids, self._collector.delimiter
+            ),
+        )
         try:
-            order_book = OrderBook(
-                a=self.group_order_book(
-                    self._collector.order_book.asks, self._collector.delimiter
-                ),
-                b=self.group_order_book(
-                    self._collector.order_book.asks, self._collector.delimiter
-                ),
-            )
-
             async with get_async_db() as session:
                 await create_order_book(
                     session,
@@ -101,24 +99,3 @@ class DbWorker(Worker):
         logging.debug(
             f"Saved grouped order book: {order_book_json} [symbol={self._collector.symbol}]"
         )
-
-    @staticmethod
-    def group_order_book(
-        order_book: Dict[str, str], delimiter: Decimal
-    ) -> Dict[Decimal, Decimal]:
-        grouped_order_book = {}
-        for price, quantity in order_book.items():
-            price = Decimal(price)
-            quantity = Decimal(quantity)
-
-            # Calculate bucketed price
-            bucketed_price = price - (price % delimiter)
-
-            # Initialize the bucket if it doesn't exist
-            if bucketed_price not in grouped_order_book:
-                grouped_order_book[bucketed_price] = Decimal(0.0)
-
-            # Accumulate quantity in the bucket
-            grouped_order_book[bucketed_price] += quantity
-
-        return grouped_order_book

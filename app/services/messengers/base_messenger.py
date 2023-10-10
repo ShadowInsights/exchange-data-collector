@@ -5,5 +5,5 @@ from app.services.messengers.common import BaseMessage
 
 class BaseMessenger(ABC):
     @abstractmethod
-    async def send(self, data: BaseMessage):
+    async def send(self, data: BaseMessage) -> None:
         pass
