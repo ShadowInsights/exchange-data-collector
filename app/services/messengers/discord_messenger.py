@@ -1,5 +1,5 @@
-import logging
 import asyncio
+import logging
 
 from discord_webhook import AsyncDiscordWebhook, DiscordEmbed
 

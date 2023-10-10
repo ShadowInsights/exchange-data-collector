@@ -12,7 +12,6 @@ from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker, set_interval
 from app.services.messengers.common import BaseMessage, Field
-from app.utils.string_utils import add_comma_every_n_symbols
 from app.utils.time_utils import get_current_time
 
 
@@ -184,9 +183,7 @@ class OrdersWorker(Worker):
             formatted_composition = "{:.2f}".format(
                 anomaly.price * anomaly.quantity
             )
-            description = (
-                f"Order anomaly {anomaly.type} was detected for {pair.symbol} on {exchange.name}"
-            )
+            description = f"Order anomaly {anomaly.type} was detected for {pair.symbol} on {exchange.name}"
             order_field = Field(
                 name="Order",
                 value=f"Price: {formatted_price}\nQuantity: "
