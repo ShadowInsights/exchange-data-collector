@@ -8,9 +8,7 @@ from decimal import Decimal
 from app.common.config import settings
 from app.common.database import get_async_db
 from app.db.repositories.order_book_repository import create_order_book
-from app.services.collectors.binance_exchange_collector import \
-    BinanceExchangeCollector
-from app.services.collectors.common import OrderBook
+from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker, set_interval
 
 
@@ -22,7 +20,7 @@ def handle_decimal_type(obj) -> str:
 
 class DbWorker(Worker):
     # TODO: Create a base class for all collectors
-    def __init__(self, collector: BinanceExchangeCollector):
+    def __init__(self, collector: Collector):
         self._collector = collector
         self._stamp_id = 0
 

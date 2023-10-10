@@ -8,13 +8,15 @@ from app.services.clients.binance_http_client import BinanceHttpClient
 from app.services.clients.binance_websocket_client import \
     BinanceWebsocketClient
 from app.services.clients.schemas.binance import OrderBookSnapshot
+from app.services.collectors.common import Collector
 from app.services.collectors.workers.db_worker import DbWorker
 from app.services.collectors.workers.liquidity_worker import LiquidityWorker
+from app.services.collectors.workers.orders_worker import OrdersWorker
 from app.services.messengers.base_messenger import BaseMessenger
 from app.utils.math_utils import recalc_avg
 
 
-class BinanceExchangeCollector:
+class BinanceExchangeCollector(Collector):
     def __init__(
         self,
         launch_id: UUID,
@@ -24,18 +26,21 @@ class BinanceExchangeCollector:
         delimiter: Decimal,
         messenger: BaseMessenger,
     ):
-        self.order_book = OrderBookSnapshot(0, {}, {})
-        self.launch_id = launch_id
-        self.pair_id = pair_id
-        self.symbol = symbol
-        self.delimiter = delimiter
-        self.avg_volume = 0
-        self.volume_counter = 0
-        self.messenger = messenger
+        super().__init__(
+            launch_id,
+            pair_id,
+            exchange_id,
+            symbol,
+            delimiter,
+            messenger,
+        )
         self._http_client = BinanceHttpClient(symbol)
         self._ws_client = BinanceWebsocketClient(symbol)
-        self._exchange_id = exchange_id
-        self._workers = [DbWorker(self), LiquidityWorker(self)]
+        self._workers = [
+            DbWorker(self),
+            LiquidityWorker(self),
+            OrdersWorker(self),
+        ]
 
     async def run(self):
         logging.info(f"Collecting data for {self.symbol}")

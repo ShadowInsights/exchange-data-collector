@@ -16,8 +16,7 @@ from app.db.repositories.liquidity_repository import (
 from app.db.repositories.order_book_repository import \
     find_all_between_time_range
 from app.db.repositories.pair_repository import find_all_pairs, find_pair_by_id
-from app.services.collectors.binance_exchange_collector import \
-    BinanceExchangeCollector
+from app.services.collectors.common import Collector
 from app.services.collectors.workers.common import Worker
 from app.services.collectors.workers.db_worker import set_interval
 from app.services.messengers.common import BaseMessage, Field
@@ -29,7 +28,7 @@ NON_EXIST_BEGIN_TIME = datetime.datetime.fromtimestamp(1609459200)
 
 class LiquidityWorker(Worker):
     # TODO: Create a base class for all collectors
-    def __init__(self, collector: BinanceExchangeCollector):
+    def __init__(self, collector: Collector):
         self._collector = collector
 
         with get_sync_db() as session:

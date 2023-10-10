@@ -1,5 +1,5 @@
-import time
-from datetime import datetime
+import time as t
+from datetime import datetime, time
 
 
 class TradingSession:
@@ -41,4 +41,4 @@ def is_current_time_inside_trading_sessions(
 
 
 def get_current_time() -> float:
-    return time.time()
+    return t.time()

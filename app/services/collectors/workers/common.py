@@ -52,10 +52,8 @@ def set_interval(seconds) -> callable:
                 try:
                     await asyncio.sleep(seconds)
                     await func(*args, **kwargs)
-                except Exception as error:
-                    logging.error(
-                        f"Error was occurred while running job {error}"
-                    )
+                except Exception as e:
+                    logging.exception(e)
 
         return wrapper
 
