@@ -51,7 +51,7 @@ def set_interval(seconds) -> callable:
             while True:
                 try:
                     await asyncio.sleep(seconds)
-                    await func(*args, **kwargs)
+                    asyncio.create_task(func(*args, **kwargs))
                 except Exception as e:
                     logging.exception(e)
 

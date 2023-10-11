@@ -62,9 +62,9 @@ class LiquidityWorker(Worker):
             )
 
         # Perform anomaly analysis
-        asyncio.create_task(self._perform_anomaly_analysis())
+        await self.__perform_anomaly_analysis()
 
-    async def _perform_anomaly_analysis(self) -> None:
+    async def __perform_anomaly_analysis(self) -> None:
         # if comparable liquidity set size is not optimal, then just add saved liquidity record to set
         if (
             len(self._last_avg_volumes)
@@ -78,7 +78,7 @@ class LiquidityWorker(Worker):
             return
 
         # Check avg volume for anomaly based on last n avg volumes
-        deviation = self._calculate_deviation()
+        deviation = self.__calculate_deviation()
 
         if deviation > settings.LIQUIDITY_ANOMALY_RATIO or deviation < (
             1 / settings.LIQUIDITY_ANOMALY_RATIO
@@ -89,7 +89,7 @@ class LiquidityWorker(Worker):
 
             # Send alert notification via standard messenger implementation
             asyncio.create_task(
-                self._send_notification(
+                self.__send_notification(
                     pair_id=self._collector.pair_id,
                     deviation=deviation,
                     current_avg_volume=self._collector.avg_volume,
@@ -107,7 +107,7 @@ class LiquidityWorker(Worker):
         # Clean volume stats for elapsed time period
         self._collector.clear_volume_stats()
 
-    def _calculate_deviation(self) -> float:
+    def __calculate_deviation(self) -> float:
         # Calculate avg volume based on n last volumes
         common_avg_volume = round(
             calc_avg(
@@ -125,7 +125,7 @@ class LiquidityWorker(Worker):
 
         return deviation
 
-    async def _send_notification(
+    async def __send_notification(
         self,
         pair_id: UUID,
         deviation: float,
@@ -160,9 +160,9 @@ class LiquidityWorker(Worker):
         )
 
         # Sending message
-        asyncio.create_task(self._collector.messenger.send(body))
+        await self._collector.messenger.send(body)
 
-
+# TODO: move back to class
 async def fill_missed_liquidity_intervals() -> None:
     async with get_async_db() as session:
         pairs = await find_all_pairs(session)

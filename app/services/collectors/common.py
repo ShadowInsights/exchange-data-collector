@@ -1,5 +1,6 @@
 from abc import ABC
 from decimal import Decimal
+import logging
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -32,6 +33,7 @@ class Collector(ABC):
         delimiter: Decimal,
         messenger: BaseMessenger,
     ):
+        # TODO: make protected
         self.order_book = OrderBookSnapshot(0, {}, {})
         self.launch_id = launch_id
         self.pair_id = pair_id
@@ -41,3 +43,9 @@ class Collector(ABC):
         self.volume_counter = 0
         self.messenger = messenger
         self._exchange_id = exchange_id
+
+    def clear_volume_stats(self):
+        logging.debug("Cleaning volume stats")
+
+        self.avg_volume = 0
+        self.volume_counter = 0

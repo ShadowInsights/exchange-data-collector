@@ -131,9 +131,3 @@ class BinanceExchangeCollector(Collector):
             f"Total volume of update №{self.volume_counter}  - {total_volume}"
         )
         logging.debug(f"New average volume is {self.avg_volume}")
-
-    def clear_volume_stats(self):
-        logging.debug("Cleaning volume stats")
-
-        self.avg_volume = 0
-        self.volume_counter = 0

@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
@@ -21,9 +22,8 @@ class Settings(BaseSettings):
     POSTGRES_USERNAME: str
     POSTGRES_PASSWORD: str
 
-    PYTHON_ENV: str | None = None
+    PYTHON_ENV: Literal["DEV", "PROD"] | None = None
 
-    # GOOGLE_APPLICATION_CREDENTIALS: str
     GOOGLE_CLOUD_BUCKET_NAME: str
 
     ORDER_BOOKS_TABLE_DUMP_LIMIT: int

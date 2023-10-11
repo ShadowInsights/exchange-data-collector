@@ -62,7 +62,7 @@ class DbWorker(Worker):
             self._stamp_id += 1
 
             # Log the order book
-            self._log_order_book(order_book.b, order_book.a)
+            self.__log_order_book(order_book.b, order_book.a)
         except Exception as e:
             logging.error(f"Error: {e} [symbol={self._collector.symbol}]")
 
@@ -82,7 +82,7 @@ class DbWorker(Worker):
                 f"Worker function took longer than 1 seconds: {time_spent} seconds [symbol={self._collector.symbol}]"
             )
 
-    def _log_order_book(self, grouped_bids, grouped_asks) -> None:
+    def __log_order_book(self, grouped_bids, grouped_asks) -> None:
         # Convert keys and values to string before dumping to json
         grouped_bids = {
             handle_decimal_type(k): handle_decimal_type(v)
