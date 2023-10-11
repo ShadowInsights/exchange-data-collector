@@ -69,10 +69,10 @@ class OrdersWorker(Worker):
         )
 
     def __check_anomalies(self, order_book: OrderBook) -> List[OrderAnomaly]:
-        anomaly_asks, average_liquidity = self.__get_anomalies(
+        anomaly_asks, average_asks_liquidity = self.__get_anomalies(
             order_book.a, "asks"
         )
-        anomaly_bids, average_liquidity = self.__get_anomalies(
+        anomaly_bids, average_bids_liquidity = self.__get_anomalies(
             order_book.b, "bids"
         )
 
@@ -80,7 +80,7 @@ class OrdersWorker(Worker):
             OrderAnomaly(
                 price=price,
                 quantity=quantity,
-                average_liquidity=average_liquidity,
+                average_liquidity=average_asks_liquidity,
                 type="ask",
             )
             for price, quantity in anomaly_asks.items()
@@ -90,7 +90,7 @@ class OrdersWorker(Worker):
             OrderAnomaly(
                 price=price,
                 quantity=quantity,
-                average_liquidity=average_liquidity,
+                average_liquidity=average_bids_liquidity,
                 type="bid",
             )
             for price, quantity in anomaly_bids.items()
