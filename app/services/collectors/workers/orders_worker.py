@@ -130,7 +130,7 @@ class OrdersWorker(Worker):
             price: qty
             for price, qty in top_orders.items()
             if price * qty
-            > settings.ORDER_ANOMALY_MULTIPLIER * average_liquidity
+            > Decimal(settings.ORDER_ANOMALY_MULTIPLIER) * average_liquidity
         }
 
         return anomalies, average_liquidity
