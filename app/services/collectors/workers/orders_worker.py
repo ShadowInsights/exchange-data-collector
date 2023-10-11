@@ -178,7 +178,6 @@ class OrdersWorker(Worker):
         # Formatting message
         title = "Order Anomaly"
         for anomaly in anomalies:
-            formatted_price = "{:.2f}".format(anomaly.price)
             formatted_quantity = "{:.2f}".format(anomaly.quantity)
             formatted_composition = "{:.2f}".format(
                 anomaly.price * anomaly.quantity
@@ -186,7 +185,7 @@ class OrdersWorker(Worker):
             description = f"Order anomaly {anomaly.type} was detected for {pair.symbol} on {exchange.name}"
             order_field = Field(
                 name="Order",
-                value=f"Price: {formatted_price}\nQuantity: "
+                value=f"Price: {anomaly.price}\nQuantity: "
                 f"{formatted_quantity}\nLiquidity: {formatted_composition}",
             )
             total_liquidity_field = Field(
