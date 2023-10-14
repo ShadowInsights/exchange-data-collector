@@ -14,7 +14,8 @@ from app.services.collectors.workers.common import Worker, set_interval
 from app.services.messengers.common import BaseMessage, Field
 from app.services.messengers.discord_messenger import DiscordMessenger
 from app.utils.string_utils import (add_comma_every_n_symbols,
-                                    round_decimal_to_first_non_zero)
+                                    round_decimal_to_first_non_zero,
+                                    to_title_case)
 from app.utils.time_utils import get_current_time
 
 
@@ -192,7 +193,11 @@ class OrdersWorker(Worker):
             formatted_quantity = add_comma_every_n_symbols(
                 "{:.2f}".format(anomaly.quantity)
             )
-            description = f"Order anomaly {anomaly.type} was detected for **{pair.symbol}** on **{exchange.name}**"
+            formatted_exchange_name = to_title_case(exchange.name)
+            description = (
+                f"Order anomaly {anomaly.type} was detected "
+                f"for **{pair.symbol}** on **{formatted_exchange_name}**"
+            )
             order_field = Field(
                 name="Order",
                 value=f"Price: {formatted_price}\nQuantity: "

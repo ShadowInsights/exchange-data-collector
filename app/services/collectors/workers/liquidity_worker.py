@@ -22,7 +22,7 @@ from app.services.collectors.workers.db_worker import set_interval
 from app.services.messengers.common import BaseMessage, Field
 from app.services.messengers.discord_messenger import DiscordMessenger
 from app.utils.math_utils import calc_avg, recalc_avg
-from app.utils.string_utils import add_comma_every_n_symbols
+from app.utils.string_utils import add_comma_every_n_symbols, to_title_case
 
 NON_EXIST_BEGIN_TIME = datetime.datetime.fromtimestamp(1609459200)
 
@@ -148,7 +148,8 @@ class LiquidityWorker(Worker):
         else:
             depth_change_vector = "Increased"
 
-        description = f"{depth_change_vector} depth was detected for **{pair.symbol}** on **{exchange.name}**"
+        formatted_exchange_name = to_title_case(exchange.name)
+        description = f"{depth_change_vector} depth was detected for **{pair.symbol}** on **{formatted_exchange_name}**"
         deviation = Field(name="Deviation", value="{:.2f}".format(deviation))
         volume_changes_field = Field(
             name="Depth changes",

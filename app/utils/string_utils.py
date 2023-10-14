@@ -39,3 +39,7 @@ def round_decimal_to_first_non_zero(num: Decimal) -> Decimal:
     result = DECIMAL_ROUND_REGEX.sub(r"\1", str_num)
 
     return result
+
+
+def to_title_case(s: str) -> str:
+    return s.capitalize()
