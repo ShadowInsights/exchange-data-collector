@@ -12,6 +12,7 @@ from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker, set_interval
 from app.services.messengers.common import BaseMessage, Field
+from app.services.messengers.discord_messenger import DiscordMessenger
 from app.utils.time_utils import get_current_time
 
 
@@ -19,12 +20,18 @@ class OrderAnomaly(NamedTuple):
     price: Decimal
     quantity: Decimal
     average_liquidity: Decimal
-    type: Literal["ask", "bid"] = None
+    type: Literal["ask", "bid"]
 
 
 class OrdersWorker(Worker):
     def __init__(self, collector: Collector):
         self._collector = collector
+        self._asks_messenger = DiscordMessenger(
+            embed_color=settings.DISCORD_ORDER_ANOMALY_ASK_EMBED_COLOR
+        )
+        self._bids_messenger = DiscordMessenger(
+            embed_color=settings.DISCORD_ORDER_ANOMALY_BID_EMBED_COLOR
+        )
         self._previous_order_book: OrderBook = None
         self._detected_anomalies: Dict[Decimal, float] = {}
 
@@ -175,28 +182,32 @@ class OrdersWorker(Worker):
             pair = await find_pair_by_id(session, id=self._collector.pair_id)
             exchange = await find_exchange_by_id(session, id=pair.exchange_id)
 
-        # Formatting message
         title = "Order Anomaly"
         for anomaly in anomalies:
             formatted_quantity = "{:.2f}".format(anomaly.quantity)
-            formatted_composition = "{:.2f}".format(
-                anomaly.price * anomaly.quantity
-            )
-            description = f"Order anomaly {anomaly.type} was detected for {pair.symbol} on {exchange.name}"
+            order_liquidity = "{:.2f}".format(anomaly.price * anomaly.quantity)
+            description = f"Order anomaly {anomaly.type} was detected for **{pair.symbol}** on **{exchange.name}**"
             order_field = Field(
                 name="Order",
                 value=f"Price: {anomaly.price}\nQuantity: "
-                f"{formatted_quantity}\nLiquidity: {formatted_composition}",
+                f"{formatted_quantity}",
             )
-            total_liquidity_field = Field(
+            average_liquidity_field = Field(
                 name="Average liquidity",
                 value="{:.2f}".format(anomaly.average_liquidity),
             )
-            # Construct message to send
+            order_liquidity = Field(
+                name="Order liquidity", value=order_liquidity
+            )
             body = BaseMessage(
                 title=title,
                 description=description,
-                fields=[order_field, total_liquidity_field],
+                fields=[order_field, average_liquidity_field, order_liquidity],
             )
-            # Sending message
-            asyncio.create_task(self._collector.messenger.send(body))
+            if anomaly.type == "ask":
+                asyncio.create_task(self._asks_messenger.send(body))
+            elif anomaly.type == "bid":
+                asyncio.create_task(self._bids_messenger.send(body))
+            else:
+                logging.error("Invalid order type")
+                raise ValueError("Invalid order type")

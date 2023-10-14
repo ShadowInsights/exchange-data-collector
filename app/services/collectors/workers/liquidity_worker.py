@@ -20,6 +20,7 @@ from app.services.collectors.common import Collector
 from app.services.collectors.workers.common import Worker
 from app.services.collectors.workers.db_worker import set_interval
 from app.services.messengers.common import BaseMessage, Field
+from app.services.messengers.discord_messenger import DiscordMessenger
 from app.utils.math_utils import calc_avg, recalc_avg
 from app.utils.string_utils import add_comma_every_n_symbols
 
@@ -30,6 +31,9 @@ class LiquidityWorker(Worker):
     # TODO: Create a base class for all collectors
     def __init__(self, collector: Collector):
         self._collector = collector
+        self._messenger = DiscordMessenger(
+            embed_color=settings.DISCORD_DEPTH_EMBED_COLOR
+        )
 
         with get_sync_db() as session:
             # Get last n liquidity records by pair id
@@ -160,9 +164,12 @@ class LiquidityWorker(Worker):
         )
 
         # Sending message
-        await self._collector.messenger.send(body)
+        await self._messenger.send(body)
+
 
 # TODO: move back to class
+
+
 async def fill_missed_liquidity_intervals() -> None:
     async with get_async_db() as session:
         pairs = await find_all_pairs(session)
