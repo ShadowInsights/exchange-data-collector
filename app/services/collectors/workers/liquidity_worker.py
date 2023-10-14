@@ -148,12 +148,12 @@ class LiquidityWorker(Worker):
         else:
             depth_change_vector = "Increased"
 
-        description = f"{depth_change_vector} depth was detected for {pair.symbol} on {exchange.name}"
+        description = f"{depth_change_vector} depth was detected for **{pair.symbol}** on **{exchange.name}**"
         deviation = Field(name="Deviation", value="{:.2f}".format(deviation))
         volume_changes_field = Field(
             name="Depth changes",
-            value=f"Current: {add_comma_every_n_symbols(current_avg_volume, 3)}\nPrevious: "
-            f"{add_comma_every_n_symbols(previous_avg_volume, 3)}",
+            value=f"Current: {add_comma_every_n_symbols(current_avg_volume)}\nPrevious: "
+            f"{add_comma_every_n_symbols(previous_avg_volume)}",
         )
 
         # Construct message to send

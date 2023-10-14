@@ -13,6 +13,8 @@ from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker, set_interval
 from app.services.messengers.common import BaseMessage, Field
 from app.services.messengers.discord_messenger import DiscordMessenger
+from app.utils.string_utils import (add_comma_every_n_symbols,
+                                    round_decimal_to_first_non_zero)
 from app.utils.time_utils import get_current_time
 
 
@@ -184,25 +186,38 @@ class OrdersWorker(Worker):
 
         title = "Order Anomaly"
         for anomaly in anomalies:
-            formatted_quantity = "{:.2f}".format(anomaly.quantity)
-            order_liquidity = "{:.2f}".format(anomaly.price * anomaly.quantity)
+            formatted_price = add_comma_every_n_symbols(
+                round_decimal_to_first_non_zero(anomaly.price)
+            )
+            formatted_quantity = add_comma_every_n_symbols(
+                "{:.2f}".format(anomaly.quantity)
+            )
             description = f"Order anomaly {anomaly.type} was detected for **{pair.symbol}** on **{exchange.name}**"
             order_field = Field(
                 name="Order",
-                value=f"Price: {anomaly.price}\nQuantity: "
+                value=f"Price: {formatted_price}\nQuantity: "
                 f"{formatted_quantity}",
             )
             average_liquidity_field = Field(
                 name="Average liquidity",
-                value="{:.2f}".format(anomaly.average_liquidity),
+                value=add_comma_every_n_symbols(
+                    "{:.2f}".format(anomaly.average_liquidity)
+                ),
             )
-            order_liquidity = Field(
-                name="Order liquidity", value=order_liquidity
+            order_liquidity_field = Field(
+                name="Order liquidity",
+                value=add_comma_every_n_symbols(
+                    "{:.2f}".format(anomaly.price * anomaly.quantity)
+                ),
             )
             body = BaseMessage(
                 title=title,
                 description=description,
-                fields=[order_field, average_liquidity_field, order_liquidity],
+                fields=[
+                    order_field,
+                    order_liquidity_field,
+                    average_liquidity_field,
+                ],
             )
             if anomaly.type == "ask":
                 asyncio.create_task(self._asks_messenger.send(body))

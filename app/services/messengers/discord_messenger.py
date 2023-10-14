@@ -39,6 +39,7 @@ class DiscordMessenger(BaseMessenger):
             color=self._embed_color,
         )
         embed.set_timestamp()
+        embed.set_footer(text="Shadow Insights")
 
         for field in message.fields:
             embed.add_embed_field(
