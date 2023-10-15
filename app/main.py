@@ -12,7 +12,6 @@ from app.services.collectors.binance_exchange_collector import \
     BinanceExchangeCollector
 from app.services.collectors.workers.liquidity_worker import \
     fill_missed_liquidity_intervals
-from app.services.messengers.discord_messenger import DiscordMessenger
 from app.workers.order_book_worker import order_book_table_truncate_and_backup
 
 launch_id = uuid.uuid4()
@@ -56,8 +55,6 @@ async def start_collectors() -> None:
     async with get_async_db() as session:
         pairs = await find_all_pairs(session)
 
-    messenger = DiscordMessenger()
-
     for pair in pairs:
         collector = BinanceExchangeCollector(
             launch_id=launch_id,
@@ -65,7 +62,6 @@ async def start_collectors() -> None:
             exchange_id=pair.exchange_id,
             symbol=pair.symbol,
             delimiter=pair.delimiter,
-            messenger=messenger,
         )
 
         # Schedule the collector's task to run

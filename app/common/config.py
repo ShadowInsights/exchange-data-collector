@@ -41,7 +41,9 @@ class Settings(BaseSettings):
     ANOMALIES_TTL: int = 900
 
     DISCORD_WEBHOOKS: str
-    DISCORD_EMBED_COLOR: str
+    DISCORD_DEPTH_EMBED_COLOR: str
+    DISCORD_ORDER_ANOMALY_BID_EMBED_COLOR: str
+    DISCORD_ORDER_ANOMALY_ASK_EMBED_COLOR: str
 
 
 settings = Settings()

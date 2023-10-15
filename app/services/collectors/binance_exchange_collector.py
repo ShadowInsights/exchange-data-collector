@@ -12,7 +12,6 @@ from app.services.collectors.common import Collector
 from app.services.collectors.workers.db_worker import DbWorker
 from app.services.collectors.workers.liquidity_worker import LiquidityWorker
 from app.services.collectors.workers.orders_worker import OrdersWorker
-from app.services.messengers.base_messenger import BaseMessenger
 from app.utils.math_utils import recalc_avg
 
 
@@ -24,7 +23,6 @@ class BinanceExchangeCollector(Collector):
         exchange_id: UUID,
         symbol: str,
         delimiter: Decimal,
-        messenger: BaseMessenger,
     ):
         super().__init__(
             launch_id,
@@ -32,7 +30,6 @@ class BinanceExchangeCollector(Collector):
             exchange_id,
             symbol,
             delimiter,
-            messenger,
         )
         self._http_client = BinanceHttpClient(symbol)
         self._ws_client = BinanceWebsocketClient(symbol)

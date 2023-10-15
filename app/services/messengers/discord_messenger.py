@@ -9,7 +9,7 @@ from app.services.messengers.common import BaseMessage
 
 
 class DiscordMessenger(BaseMessenger):
-    def __init__(self):
+    def __init__(self, embed_color: str):
         super().__init__()
         self.lock = asyncio.Lock()
         self.webhooks = [
@@ -18,7 +18,7 @@ class DiscordMessenger(BaseMessenger):
             )
             for webhook_url in settings.DISCORD_WEBHOOKS.split(",")
         ]
-        self._embed_color = settings.DISCORD_EMBED_COLOR
+        self._embed_color = embed_color
 
     async def send(self, message: BaseMessage) -> None:
         try:
@@ -39,6 +39,7 @@ class DiscordMessenger(BaseMessenger):
             color=self._embed_color,
         )
         embed.set_timestamp()
+        embed.set_footer(text="Shadow Insights")
 
         for field in message.fields:
             embed.add_embed_field(
