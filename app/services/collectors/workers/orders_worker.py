@@ -2,41 +2,57 @@ import asyncio
 import copy
 import logging
 from decimal import Decimal
-from typing import Dict, List, Literal, NamedTuple, Tuple
+from typing import Dict, List, Literal, NamedTuple, Set
 
 from app.common.config import settings
-from app.common.database import get_async_db
-from app.db.repositories.exchange_repository import find_exchange_by_id
-from app.db.repositories.pair_repository import find_pair_by_id
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker, set_interval
-from app.services.messengers.common import BaseMessage, Field
-from app.services.messengers.discord_messenger import DiscordMessenger
-from app.utils.string_utils import (add_comma_every_n_symbols,
-                                    round_decimal_to_first_non_zero,
-                                    to_title_case)
+from app.services.messengers.order_book_discord_messenger import (
+    OrderAnomalyNotification, OrderBookDiscordMessenger)
+from app.utils.math_utils import calc_avg
 from app.utils.time_utils import get_current_time
 
 
 class OrderAnomaly(NamedTuple):
     price: Decimal
     quantity: Decimal
+    order_liquidity: Decimal
     average_liquidity: Decimal
+    position: int
     type: Literal["ask", "bid"]
 
 
+class AnomalyKey(NamedTuple):
+    price: Decimal
+    type: Literal["ask", "bid"]
+
+
+class ObservingOrderAnomaly(NamedTuple):
+    time: float
+    order_anomaly: OrderAnomaly
+
+
 class OrdersWorker(Worker):
-    def __init__(self, collector: Collector):
+    def __init__(
+        self,
+        collector: Collector,
+        discord_messenger: OrderBookDiscordMessenger,
+        order_anomaly_multiplier: float = settings.ORDER_ANOMALY_MULTIPLIER,
+        anomalies_detection_ttl: int = settings.ANOMALIES_DETECTION_TTL,
+        anomalies_observing_ttl: int = settings.ANOMALIES_OBSERVING_TTL,
+        anomalies_observing_ratio: float = settings.ANOMALIES_OBSERVING_RATIO,
+        top_n_orders: int = settings.TOP_N_ORDERS,
+    ):
         self._collector = collector
-        self._asks_messenger = DiscordMessenger(
-            embed_color=settings.DISCORD_ORDER_ANOMALY_ASK_EMBED_COLOR
-        )
-        self._bids_messenger = DiscordMessenger(
-            embed_color=settings.DISCORD_ORDER_ANOMALY_BID_EMBED_COLOR
-        )
-        self._previous_order_book: OrderBook = None
-        self._detected_anomalies: Dict[Decimal, float] = {}
+        self._discord_messenger = discord_messenger
+        self._detected_anomalies: Dict[AnomalyKey, float] = {}
+        self._observing_anomalies: Dict[AnomalyKey, ObservingOrderAnomaly] = {}
+        self._orders_anomaly_multiplier = Decimal(order_anomaly_multiplier)
+        self._anomalies_detection_ttl = anomalies_detection_ttl
+        self._anomalies_observing_ttl = anomalies_observing_ttl
+        self._anomalies_observing_ratio = Decimal(anomalies_observing_ratio)
+        self._top_n_orders = top_n_orders
 
     @set_interval(settings.ORDERS_WORKER_JOB_INTERVAL)
     async def run(self) -> None:
@@ -49,24 +65,29 @@ class OrdersWorker(Worker):
         logging.debug(
             f"Orders processing cycle started [symbol={self._collector.symbol}]"
         )
-
-        collector_current_order_book = copy.deepcopy(
-            self._collector.order_book
+        current_order_book = self.__group_orders(
+            copy.deepcopy(self._collector.order_book)
         )
-        if self._previous_order_book is None:
-            self._previous_order_book = self.__group_orders(
-                collector_current_order_book
+        anomalies = self.__find_anomalies(current_order_book)
+        filtered_anomalies = self.__filter_anomalies(anomalies)
+
+        if filtered_anomalies:
+            order_anomaly_notifications = [
+                OrderAnomalyNotification(
+                    price=anomaly.price,
+                    quantity=anomaly.quantity,
+                    order_liquidity=anomaly.order_liquidity,
+                    average_liquidity=anomaly.average_liquidity,
+                    type=anomaly.type,
+                )
+                for anomaly in filtered_anomalies
+            ]
+            asyncio.create_task(
+                self._discord_messenger.send_notifications(
+                    order_anomaly_notifications,
+                    self._collector.pair_id,
+                )
             )
-            return
-
-        current_order_book = self.__group_orders(collector_current_order_book)
-        anomalies = self.__check_anomalies(current_order_book)
-        self.__prune_anomalies()
-
-        self._previous_order_book = current_order_book
-
-        if anomalies:
-            await self.__send_notification(anomalies)
 
     def __group_orders(self, order_book: OrderBookSnapshot) -> OrderBook:
         return OrderBook(
@@ -78,156 +99,146 @@ class OrdersWorker(Worker):
             ),
         )
 
-    def __check_anomalies(self, order_book: OrderBook) -> List[OrderAnomaly]:
-        anomaly_asks, average_asks_liquidity = self.__get_anomalies(
-            order_book.a, "asks"
-        )
-        anomaly_bids, average_bids_liquidity = self.__get_anomalies(
-            order_book.b, "bids"
-        )
-
-        new_anomaly_asks = {
-            OrderAnomaly(
-                price=price,
-                quantity=quantity,
-                average_liquidity=average_asks_liquidity,
-                type="ask",
-            )
-            for price, quantity in anomaly_asks.items()
-            if price not in self._detected_anomalies
-        }
-        new_anomaly_bids = {
-            OrderAnomaly(
-                price=price,
-                quantity=quantity,
-                average_liquidity=average_bids_liquidity,
-                type="bid",
-            )
-            for price, quantity in anomaly_bids.items()
-            if price not in self._detected_anomalies
-        }
-
-        current_time = get_current_time()
-        for anomaly in new_anomaly_asks:
-            self._detected_anomalies[anomaly.price] = current_time
-            logging.info(
-                f"New anomaly detected in asks [symbol={self._collector.symbol}, "
-                f"price={anomaly.price}, quantity={anomaly_asks[anomaly.price]}]"
-            )
-        for anomaly in new_anomaly_bids:
-            self._detected_anomalies[anomaly.price] = current_time
-            logging.info(
-                f"New anomaly detected in bids [symbol={self._collector.symbol}, "
-                f"price={anomaly.price}, quantity={anomaly_bids[anomaly.price]}]"
-            )
-
-        return list(new_anomaly_asks) + list(new_anomaly_bids)
+    def __find_anomalies(self, order_book: OrderBook) -> List[OrderAnomaly]:
+        return self.__get_anomalies(
+            order_book.a, "ask"
+        ) + self.__get_anomalies(order_book.b, "bid")
 
     def __get_anomalies(
-        self,
-        orders: Dict[Decimal, Decimal],
-        order_type: Literal["asks", "bids"],
-    ) -> Tuple[Dict[Decimal, Decimal], float]:
-        top_orders = self.__get_top_orders(orders, order_type)
+        self, orders: Dict[Decimal, Decimal], order_type: Literal["ask", "bid"]
+    ) -> List[OrderAnomaly]:
+        top_orders = self.__get_sorted_top_orders(orders, order_type)
 
         if not top_orders:
-            return {}
+            return []
 
-        total_liquidity = sum(price * qty for price, qty in top_orders.items())
-        average_liquidity = total_liquidity / len(top_orders)
+        anomalies = []
+        for position, (price, qty) in enumerate(top_orders.items()):
+            liquidity = price * qty
+            avg_liquidity = calc_avg(
+                [p * q for p, q in top_orders.items() if p != price],
+                (len(top_orders) - 1),
+            )
 
-        anomalies = {
-            price: qty
-            for price, qty in top_orders.items()
-            if price * qty
-            > Decimal(settings.ORDER_ANOMALY_MULTIPLIER) * average_liquidity
-        }
+            if liquidity > self._orders_anomaly_multiplier * avg_liquidity:
+                anomalies.append(
+                    OrderAnomaly(
+                        price,
+                        qty,
+                        liquidity,
+                        avg_liquidity,
+                        position,
+                        order_type,
+                    )
+                )
 
-        return anomalies, average_liquidity
+        return anomalies
 
-    def __prune_anomalies(self) -> None:
-        """Remove anomalies that have exceeded their TTL."""
+    def __filter_anomalies(
+        self, anomalies: List[OrderAnomaly]
+    ) -> List[OrderAnomaly]:
         current_time = get_current_time()
-        expired_anomalies = [
-            price
-            for price, detected_time in self._detected_anomalies.items()
-            if current_time - detected_time > settings.ANOMALIES_TTL
-        ]
+        filtered_anomalies = []
+        anomaly_keys = set()
 
-        for price in expired_anomalies:
-            del self._detected_anomalies[price]
-            logging.info(
-                f"Anomaly expired [symbol={self._collector.symbol}, price={price}]"
-            )
-
-    def __get_top_orders(
-        self,
-        orders: Dict[Decimal, Decimal],
-        order_type: Literal["asks", "bids"],
-    ) -> Dict[Decimal, Decimal]:
-        if order_type == "asks":
-            return dict(
-                sorted(orders.items(), key=lambda item: item[0])[
-                    : settings.TOP_N_ORDERS
-                ]
-            )
-        elif order_type == "bids":
-            return dict(
-                sorted(orders.items(), key=lambda item: item[0], reverse=True)[
-                    : settings.TOP_N_ORDERS
-                ]
-            )
-        else:
-            raise ValueError("Invalid order type")
-
-    async def __send_notification(self, anomalies: List[OrderAnomaly]) -> None:
-        async with get_async_db() as session:
-            pair = await find_pair_by_id(session, id=self._collector.pair_id)
-            exchange = await find_exchange_by_id(session, id=pair.exchange_id)
-
-        title = "Order Anomaly"
         for anomaly in anomalies:
-            formatted_price = add_comma_every_n_symbols(
-                round_decimal_to_first_non_zero(anomaly.price)
-            )
-            formatted_quantity = add_comma_every_n_symbols(
-                "{:.2f}".format(anomaly.quantity)
-            )
-            formatted_exchange_name = to_title_case(exchange.name)
-            description = (
-                f"Order anomaly {anomaly.type} was detected "
-                f"for **{pair.symbol}** on **{formatted_exchange_name}**"
-            )
-            order_field = Field(
-                name="Order",
-                value=f"Price: {formatted_price}\nQuantity: "
-                f"{formatted_quantity}",
-            )
-            average_liquidity_field = Field(
-                name="Average liquidity",
-                value=add_comma_every_n_symbols(
-                    "{:.2f}".format(anomaly.average_liquidity)
+            anomaly_key = AnomalyKey(price=anomaly.price, type=anomaly.type)
+            anomaly_keys.add(anomaly_key)
+
+            if self.__handle_first_position_anomaly(
+                anomaly, current_time, anomaly_key
+            ):
+                filtered_anomalies.append(anomaly)
+                continue
+
+            if self.__handle_other_position_anomaly(
+                anomaly, current_time, anomaly_key
+            ):
+                filtered_anomalies.append(anomaly)
+
+        self.__remove_anomaly_keys(self._detected_anomalies, anomaly_keys)
+        self.__remove_anomaly_keys(self._observing_anomalies, anomaly_keys)
+
+        return filtered_anomalies
+
+    def __handle_first_position_anomaly(
+        self,
+        anomaly: OrderAnomaly,
+        current_time: float,
+        anomaly_key: AnomalyKey,
+    ) -> bool:
+        if anomaly.position != 0:
+            return False
+
+        if anomaly_key not in self._detected_anomalies:
+            self._detected_anomalies[anomaly_key] = current_time
+            self._observing_anomalies.pop(anomaly_key, None)
+            return True
+
+        return False
+
+    def __handle_other_position_anomaly(
+        self,
+        anomaly: OrderAnomaly,
+        current_time: float,
+        anomaly_key: AnomalyKey,
+    ) -> bool:
+        detected_anomaly = self._detected_anomalies.get(anomaly_key)
+        observing_anomaly = self._observing_anomalies.get(anomaly_key)
+
+        if detected_anomaly and detected_anomaly < (
+            current_time - self._anomalies_detection_ttl
+        ):
+            self._detected_anomalies.pop(anomaly_key, None)
+
+        if not observing_anomaly:
+            self._detected_anomalies[anomaly_key] = current_time
+            self._observing_anomalies[anomaly_key] = ObservingOrderAnomaly(
+                order_anomaly=OrderAnomaly(
+                    price=anomaly.price,
+                    quantity=anomaly.quantity,
+                    order_liquidity=anomaly.order_liquidity,
+                    average_liquidity=anomaly.average_liquidity,
+                    position=anomaly.position,
+                    type=anomaly.type,
                 ),
+                time=current_time,
             )
-            order_liquidity_field = Field(
-                name="Order liquidity",
-                value=add_comma_every_n_symbols(
-                    "{:.2f}".format(anomaly.price * anomaly.quantity)
-                ),
+            return False
+
+        if observing_anomaly.time < (
+            current_time - self._anomalies_observing_ttl
+        ):
+            deviation = (
+                abs(
+                    observing_anomaly.order_anomaly.order_liquidity
+                    - anomaly.order_liquidity
+                )
+                / observing_anomaly.order_anomaly.order_liquidity
             )
-            body = BaseMessage(
-                title=title,
-                description=description,
-                fields=[
-                    order_field,
-                    order_liquidity_field,
-                    average_liquidity_field,
-                ],
-            )
-            if anomaly.type == "ask":
-                asyncio.create_task(self._asks_messenger.send(body))
-            elif anomaly.type == "bid":
-                asyncio.create_task(self._bids_messenger.send(body))
+
+            if deviation < self._anomalies_observing_ratio:
+                self._observing_anomalies.pop(anomaly_key, None)
+                return True
             else:
-                logging.error("Invalid order type")
-                raise ValueError("Invalid order type")
+                self._observing_anomalies.pop(anomaly_key, None)
+                return False
+
+        return False
+
+    def __remove_anomaly_keys(
+        self, anomalies_dict: Dict, anomaly_keys: Set
+    ) -> None:
+        keys_to_remove = set(anomalies_dict.keys()) - anomaly_keys
+        for key in keys_to_remove:
+            del anomalies_dict[key]
+
+    def __get_sorted_top_orders(
+        self, orders: Dict[Decimal, Decimal], order_type: Literal["ask", "bid"]
+    ) -> Dict[Decimal, Decimal]:
+        reverse = order_type == "bid"
+        return dict(
+            sorted(orders.items(), key=lambda item: item[0], reverse=reverse)[
+                : self._top_n_orders
+            ]
+        )

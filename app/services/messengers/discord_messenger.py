@@ -4,12 +4,11 @@ import logging
 from discord_webhook import AsyncDiscordWebhook, DiscordEmbed
 
 from app.common.config import settings
-from app.services.messengers.base_messenger import BaseMessenger
-from app.services.messengers.common import BaseMessage
+from app.services.messengers.common import BaseMessage, BaseMessenger
 
 
 class DiscordMessenger(BaseMessenger):
-    def __init__(self, embed_color: str):
+    def __init__(self):
         super().__init__()
         self.lock = asyncio.Lock()
         self.webhooks = [
@@ -18,25 +17,30 @@ class DiscordMessenger(BaseMessenger):
             )
             for webhook_url in settings.DISCORD_WEBHOOKS.split(",")
         ]
-        self._embed_color = embed_color
 
-    async def send(self, message: BaseMessage) -> None:
+    async def _send(self, message: BaseMessage, embed_color: int) -> None:
         try:
             async with self.lock:
                 webhook = self.webhooks.pop(0)
                 self.webhooks.append(webhook)
 
-                webhook.add_embed(self._generate_message(message=message))
+                webhook.add_embed(
+                    self._generate_message(
+                        message=message, embed_color=embed_color
+                    )
+                )
 
                 await webhook.execute(remove_embeds=True)
         except Exception as error:
             logging.error(f"Error while sending alert notification: {error}")
 
-    def _generate_message(self, message: BaseMessage) -> DiscordEmbed:
+    def _generate_message(
+        self, message: BaseMessage, embed_color: int
+    ) -> DiscordEmbed:
         embed = DiscordEmbed(
             title=message.title,
             description=message.description,
-            color=self._embed_color,
+            color=embed_color,
         )
         embed.set_timestamp()
         embed.set_footer(text="Shadow Insights")

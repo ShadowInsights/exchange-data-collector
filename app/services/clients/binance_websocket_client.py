@@ -1,4 +1,5 @@
 import json
+from typing import AsyncGenerator
 
 import websockets
 
@@ -11,7 +12,9 @@ class BinanceWebsocketClient:
         self.symbol = symbol.lower()
         self.uri = f"wss://stream.binance.com:9443/ws/{self.symbol}@depth"
 
-    async def listen_depth_stream(self) -> DepthUpdateEvent:
+    async def listen_depth_stream(
+        self,
+    ) -> AsyncGenerator[DepthUpdateEvent, None]:
         async with websockets.connect(self.uri) as websocket:
             async for message in websocket:
                 data = json.loads(message)

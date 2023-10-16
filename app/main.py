@@ -2,17 +2,14 @@ import asyncio
 import logging
 import uuid
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
 from prometheus_client import start_http_server
 
 from app.common.database import get_async_db
 from app.db.repositories.pair_repository import find_all_pairs
 from app.services.collectors.binance_exchange_collector import \
     BinanceExchangeCollector
-from app.services.collectors.workers.liquidity_worker import \
+from app.services.starters.liquidity_starters import \
     fill_missed_liquidity_intervals
-from app.workers.order_book_worker import order_book_table_truncate_and_backup
 
 launch_id = uuid.uuid4()
 
@@ -25,24 +22,9 @@ def start_metrics_server() -> None:
     logging.info("Metrics server started")
 
 
-def start_scheduler() -> None:
-    logging.info("Starting scheduler")
-
-    scheduler = BackgroundScheduler()
-    trigger = CronTrigger(hour=22, minute=30, second=0, timezone="UTC")
-    scheduler.add_job(order_book_table_truncate_and_backup, trigger=trigger)
-    scheduler.start()
-
-    logging.info("Scheduler started")
-
-
 async def main() -> None:
-    tasks = [
-        asyncio.create_task(fill_missed_liquidity_intervals()),
-        asyncio.create_task(start_collectors()),
-    ]
-
-    await asyncio.gather(*tasks)
+    await fill_missed_liquidity_intervals()
+    await start_collectors()
 
 
 async def start_collectors() -> None:
@@ -77,7 +59,6 @@ if __name__ == "__main__":
 
     try:
         start_metrics_server()
-        start_scheduler()
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("\nInterrupted. Closing application...")

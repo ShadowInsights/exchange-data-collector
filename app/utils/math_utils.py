@@ -1,8 +1,12 @@
-def recalc_avg(avg: float, counter: int, value: int) -> int:
-    summ = avg * (counter - 1)
+def recalc_round_avg(avg: float, counter: int, value: int) -> int:
+    sum = avg * (counter - 1)
 
-    return round((summ + value) / counter)
+    return round((sum + value) / counter)
 
 
-def calc_avg(value_arr: [], counter: int) -> int:
+def calc_round_avg(value_arr: list[int], counter: int) -> int:
     return round(sum(value_arr) / counter)
+
+
+def calc_avg(value_arr: list[int], counter: int) -> float:
+    return sum(value_arr) / counter

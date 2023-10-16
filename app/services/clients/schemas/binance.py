@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import List
 
 
 @dataclass
@@ -11,8 +11,8 @@ class OrderBookEntry:
 @dataclass
 class OrderBookSnapshot:
     lastUpdateId: int
-    bids: Dict[str, str]
-    asks: Dict[str, str]
+    bids: List[OrderBookEntry]
+    asks: List[OrderBookEntry]
 
 
 @dataclass

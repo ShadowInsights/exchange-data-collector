@@ -1,5 +1,5 @@
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod
 from decimal import Decimal
 from uuid import UUID
 
@@ -40,6 +40,10 @@ class Collector(ABC):
         self.avg_volume = 0
         self.volume_counter = 0
         self._exchange_id = exchange_id
+
+    @abstractmethod
+    async def run(self):
+        pass
 
     def clear_volume_stats(self):
         logging.debug("Cleaning volume stats")

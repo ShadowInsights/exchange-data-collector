@@ -1,3 +1,6 @@
+from abc import ABC, abstractmethod
+
+
 class Field:
     def __init__(self, name: str, value: str):
         self.name = name
@@ -9,3 +12,9 @@ class BaseMessage:
         self.title = title
         self.description = description
         self.fields = fields
+
+
+class BaseMessenger(ABC):
+    @abstractmethod
+    async def _send(self, data: BaseMessage) -> None:
+        pass

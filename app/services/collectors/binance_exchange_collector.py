@@ -7,12 +7,18 @@ from uuid import UUID
 from app.services.clients.binance_http_client import BinanceHttpClient
 from app.services.clients.binance_websocket_client import \
     BinanceWebsocketClient
-from app.services.clients.schemas.binance import OrderBookSnapshot
+from app.services.clients.schemas.binance import (OrderBookEntry,
+                                                  OrderBookSnapshot)
 from app.services.collectors.common import Collector
+from app.services.collectors.workers.common import Worker
 from app.services.collectors.workers.db_worker import DbWorker
 from app.services.collectors.workers.liquidity_worker import LiquidityWorker
 from app.services.collectors.workers.orders_worker import OrdersWorker
-from app.utils.math_utils import recalc_avg
+from app.services.messengers.liquidity_discord_messenger import \
+    LiquidityDiscordMessenger
+from app.services.messengers.order_book_discord_messenger import \
+    OrderBookDiscordMessenger
+from app.utils.math_utils import recalc_round_avg
 
 
 class BinanceExchangeCollector(Collector):
@@ -33,10 +39,15 @@ class BinanceExchangeCollector(Collector):
         )
         self._http_client = BinanceHttpClient(symbol)
         self._ws_client = BinanceWebsocketClient(symbol)
-        self._workers = [
+        self._workers: list[Worker] = [
             DbWorker(self),
-            LiquidityWorker(self),
-            OrdersWorker(self),
+            LiquidityWorker(
+                collector=self, discord_messenger=LiquidityDiscordMessenger()
+            ),
+            OrdersWorker(
+                collector=self,
+                discord_messenger=OrderBookDiscordMessenger(),
+            ),
         ]
 
     async def run(self):
@@ -91,7 +102,7 @@ class BinanceExchangeCollector(Collector):
             self._update_avg_volume()
 
     def _update_order_book(
-        self, order_book: Dict[str, str], update: Dict[str, str]
+        self, order_book: Dict[str, str], update: OrderBookEntry
     ) -> None:
         logging.debug(f"Updating order book with {update}")
         # The data in each event is the absolute quantity for a price level
@@ -118,7 +129,7 @@ class BinanceExchangeCollector(Collector):
             total_volume += float(price) * float(quantity)
 
         # Set new average volume
-        self.avg_volume = recalc_avg(
+        self.avg_volume = recalc_round_avg(
             avg=self.avg_volume,
             counter=self.volume_counter,
             value=total_volume,
