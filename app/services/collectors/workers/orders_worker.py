@@ -119,8 +119,11 @@ class OrdersWorker(Worker):
                 [p * q for p, q in top_orders.items() if p != price],
                 (len(top_orders) - 1),
             )
+            biggest_order = max(
+                [p * q for p, q in top_orders.items() if p != price]
+            )
 
-            if liquidity > self._orders_anomaly_multiplier * avg_liquidity:
+            if liquidity > self._orders_anomaly_multiplier * biggest_order:
                 anomalies.append(
                     OrderAnomaly(
                         price,
