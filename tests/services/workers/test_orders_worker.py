@@ -7,9 +7,14 @@ import pytest
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector
 from app.services.collectors.workers.orders_worker import (
-    AnomalyKey, ObservingOrderAnomaly, OrderAnomaly, OrdersWorker)
-from app.services.messengers.order_book_discord_messenger import \
-    OrderAnomalyNotification
+    AnomalyKey,
+    ObservingOrderAnomaly,
+    OrderAnomaly,
+    OrdersWorker,
+)
+from app.services.messengers.order_book_discord_messenger import (
+    OrderAnomalyNotification,
+)
 
 
 class MockCollector(Collector):

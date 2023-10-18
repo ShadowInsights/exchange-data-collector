@@ -14,14 +14,8 @@ from app.utils.math_utils import calc_round_avg
 
 
 class LiquidityWorker(Worker):
-    def __init__(
-        self,
-        collector: Collector,
-        discord_messenger: LiquidityDiscordMessenger,
-    ):
-        self._collector = collector
-        self._discord_messenger = discord_messenger
 
+    def find_last_average_volumes(self) -> list:
         with get_sync_db() as session:
             # Get last n liquidity records by pair id
             last_liquidity_records = find_sync_last_n_liquidity(
@@ -31,10 +25,20 @@ class LiquidityWorker(Worker):
             )
 
             # Fill last avg volumes with average volume from extracted liquidity records
-            self._last_avg_volumes = [
+            return [
                 liquidity.average_volume
                 for liquidity in last_liquidity_records
             ]
+
+    def __init__(
+            self,
+            collector: Collector,
+            discord_messenger: LiquidityDiscordMessenger,
+    ):
+        self._collector = collector
+        self._discord_messenger = discord_messenger
+
+        self._last_avg_volumes = self.find_last_average_volumes()
 
     @set_interval(settings.LIQUIDITY_WORKER_JOB_INTERVAL)
     async def run(self) -> None:
@@ -58,8 +62,8 @@ class LiquidityWorker(Worker):
     async def __perform_anomaly_analysis(self) -> None:
         # if comparable liquidity set size is not optimal, then just add saved liquidity record to set
         if (
-            len(self._last_avg_volumes)
-            != settings.COMPARABLE_LIQUIDITY_SET_SIZE
+                len(self._last_avg_volumes)
+                != settings.COMPARABLE_LIQUIDITY_SET_SIZE
         ):
             self._last_avg_volumes.append(self._collector.avg_volume)
 
@@ -72,7 +76,7 @@ class LiquidityWorker(Worker):
         deviation = self.__calculate_deviation()
 
         if deviation > settings.LIQUIDITY_ANOMALY_RATIO or deviation < (
-            1 / settings.LIQUIDITY_ANOMALY_RATIO
+                1 / settings.LIQUIDITY_ANOMALY_RATIO
         ):
             logging.info(
                 "Found anomaly inflow of volume. Sending alert notification..."

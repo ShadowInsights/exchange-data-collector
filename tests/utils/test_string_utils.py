@@ -1,8 +1,10 @@
 from decimal import Decimal
 
-from app.utils.string_utils import (add_comma_every_n_symbols,
-                                    round_decimal_to_first_non_zero,
-                                    to_title_case)
+from app.utils.string_utils import (
+    add_comma_every_n_symbols,
+    round_decimal_to_first_non_zero,
+    to_title_case,
+)
 
 
 def test_add_comma_every_n_symbols():
