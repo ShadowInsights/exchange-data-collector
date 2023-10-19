@@ -10,7 +10,7 @@ from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker, set_interval
 from app.services.messengers.order_book_discord_messenger import (
     OrderAnomalyNotification, OrderBookDiscordMessenger)
-from app.utils.math_utils import calc_avg
+from app.utils.math_utils import calculate_avg
 from app.utils.time_utils import get_current_time
 
 
@@ -115,7 +115,7 @@ class OrdersWorker(Worker):
         anomalies = []
         for position, (price, qty) in enumerate(top_orders.items()):
             liquidity = price * qty
-            avg_liquidity = calc_avg(
+            avg_liquidity = calculate_avg(
                 [p * q for p, q in top_orders.items() if p != price],
                 (len(top_orders) - 1),
             )
