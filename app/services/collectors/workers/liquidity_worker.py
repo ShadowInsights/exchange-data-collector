@@ -1,7 +1,6 @@
 import asyncio
 import copy
 import logging
-import math
 
 from app.common.config import settings
 from app.common.database import get_async_db, get_sync_db
@@ -103,11 +102,11 @@ class LiquidityWorker(Worker):
                 self._comparable_liquidity_set_size,
             )
 
-            # Fill last avg volumes with average volume from extracted liquidity records
-            return [
-                liquidity.average_volume
-                for liquidity in last_liquidity_records
-            ]
+        # Fill last avg volumes with average volume from extracted liquidity records
+        return [
+            liquidity.average_volume
+            for liquidity in last_liquidity_records
+        ]
 
     def __calculate_deviation(self, average_volume: float) -> float:
         # Calculate avg volume based on n last volumes
