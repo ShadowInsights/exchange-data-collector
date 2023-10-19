@@ -96,16 +96,18 @@ class LiquidityWorker(Worker):
     def _find_last_average_volumes(self) -> list:
         with get_sync_db() as session:
             # Get last n liquidity records by pair id
-            last_liquidity_records = find_sync_last_n_liquidity(
+            last_average_volumes = find_sync_last_n_liquidity(
                 session,
                 self._collector.pair_id,
                 self._comparable_liquidity_set_size,
             )
 
+            session.expunge_all()
+
         # Fill last avg volumes with average volume from extracted liquidity records
         return [
             liquidity.average_volume
-            for liquidity in last_liquidity_records
+            for liquidity in last_average_volumes
         ]
 
     def __calculate_deviation(self, average_volume: float) -> float:
