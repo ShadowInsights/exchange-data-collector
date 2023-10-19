@@ -12,7 +12,7 @@ from app.db.repositories.liquidity_repository import (find_last_n_liquidity,
 from app.db.repositories.order_book_repository import \
     find_all_between_time_range
 from app.db.repositories.pair_repository import find_all_pairs
-from app.utils.math_utils import recalc_round_avg
+from app.utils.math_utils import recalculate_round_average
 
 NON_EXIST_BEGIN_TIME = datetime.datetime.fromtimestamp(1609459200)
 
@@ -103,11 +103,11 @@ async def _append_missed_liquidity_records(
             )
 
             volume_counter = 1
-            avg_volume = recalc_round_avg(0, volume_counter, volume)
+            avg_volume = recalculate_round_average(0, volume_counter, volume)
             begin_time = order_book.created_at
 
         # Process average volume of the current time interval
-        avg_volume = recalc_round_avg(
+        avg_volume = recalculate_round_average(
             avg=avg_volume, counter=volume_counter, value=volume
         )
 

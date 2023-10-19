@@ -18,7 +18,7 @@ from app.services.messengers.liquidity_discord_messenger import \
     LiquidityDiscordMessenger
 from app.services.messengers.order_book_discord_messenger import \
     OrderBookDiscordMessenger
-from app.utils.math_utils import recalc_round_avg
+from app.utils.math_utils import recalculate_round_average
 
 
 class BinanceExchangeCollector(Collector):
@@ -129,7 +129,7 @@ class BinanceExchangeCollector(Collector):
             total_volume += float(price) * float(quantity)
 
         # Set new average volume
-        self.avg_volume = recalc_round_avg(
+        self.avg_volume = recalculate_round_average(
             avg=self.avg_volume,
             counter=self.volume_counter,
             value=total_volume,
