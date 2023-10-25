@@ -1,5 +1,4 @@
 import logging
-from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
@@ -23,7 +22,7 @@ class Settings(BaseSettings):
     POSTGRES_USERNAME: str
     POSTGRES_PASSWORD: str
 
-    PYTHON_ENV: Literal["DEV", "PROD"] | None = None
+    IS_TRADING_SESSION_VERIFICATION_REQUIRED: bool = False
 
     LIQUIDITY_WORKER_JOB_INTERVAL: int = 5
     DB_WORKER_JOB_INTERVAL: int
