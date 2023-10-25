@@ -1,5 +1,3 @@
-import asyncio
-import logging
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from typing import Dict
@@ -43,18 +41,3 @@ class Worker(ABC):
             grouped_order_book[bucketed_price] += quantity
 
         return grouped_order_book
-
-
-def set_interval(seconds) -> callable:
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
-            while True:
-                try:
-                    await asyncio.sleep(seconds)
-                    asyncio.create_task(func(*args, **kwargs))
-                except Exception as e:
-                    logging.exception(e)
-
-        return wrapper
-
-    return decorator

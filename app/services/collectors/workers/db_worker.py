@@ -9,7 +9,8 @@ from app.common.config import settings
 from app.common.database import get_async_db
 from app.db.repositories.order_book_repository import create_order_book
 from app.services.collectors.common import Collector, OrderBook
-from app.services.collectors.workers.common import Worker, set_interval
+from app.services.collectors.workers.common import Worker
+from app.utils.scheduling_utils import set_interval
 
 
 def handle_decimal_type(obj) -> str:

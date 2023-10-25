@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.common.database import BaseModel
 
@@ -6,4 +7,6 @@ from app.common.database import BaseModel
 class ExchangeModel(BaseModel):
     __tablename__ = "exchanges"
 
-    name = Column(String, nullable=False, index=True, unique=True)
+    name: Mapped[str] = mapped_column(
+        String, nullable=False, index=True, unique=True
+    )

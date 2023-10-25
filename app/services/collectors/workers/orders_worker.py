@@ -7,10 +7,11 @@ from typing import Dict, List, Literal, NamedTuple, Set
 from app.common.config import settings
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector, OrderBook
-from app.services.collectors.workers.common import Worker, set_interval
+from app.services.collectors.workers.common import Worker
 from app.services.messengers.order_book_discord_messenger import (
     OrderAnomalyNotification, OrderBookDiscordMessenger)
 from app.utils.math_utils import calculate_avg
+from app.utils.scheduling_utils import set_interval
 from app.utils.time_utils import get_current_time
 
 

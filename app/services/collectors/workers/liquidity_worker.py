@@ -8,10 +8,10 @@ from app.db.repositories.liquidity_repository import (
     find_sync_last_n_liquidity, save_liquidity)
 from app.services.collectors.common import Collector
 from app.services.collectors.workers.common import Worker
-from app.services.collectors.workers.db_worker import set_interval
 from app.services.messengers.liquidity_discord_messenger import \
     LiquidityDiscordMessenger
 from app.utils.math_utils import calculate_round_avg
+from app.utils.scheduling_utils import set_interval
 
 
 class LiquidityWorker(Worker):
@@ -105,10 +105,7 @@ class LiquidityWorker(Worker):
             session.expunge_all()
 
         # Fill last avg volumes with average volume from extracted liquidity records
-        return [
-            liquidity.average_volume
-            for liquidity in last_average_volumes
-        ]
+        return [liquidity.average_volume for liquidity in last_average_volumes]
 
     def __calculate_deviation(self, average_volume: float) -> float:
         # Calculate avg volume based on n last volumes

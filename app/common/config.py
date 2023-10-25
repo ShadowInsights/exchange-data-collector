@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings
 
 # Load environment variables from .env file
 load_dotenv()
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(filename)s] %(levelname)s %(message)s",
@@ -27,6 +28,8 @@ class Settings(BaseSettings):
     LIQUIDITY_WORKER_JOB_INTERVAL: int = 5
     DB_WORKER_JOB_INTERVAL: int
     ORDERS_WORKER_JOB_INTERVAL: int = 1
+    MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL: int = 1
+    MAESTRO_PAIRS_RETRIEVAL_INTERVAL: int = 1
 
     LIQUIDITY_ANOMALY_RATIO: float
     COMPARABLE_LIQUIDITY_SET_SIZE: int

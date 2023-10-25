@@ -11,15 +11,15 @@ from app.db.repositories.liquidity_repository import (find_last_n_liquidity,
                                                       save_all_liquidity)
 from app.db.repositories.order_book_repository import \
     find_all_between_time_range
-from app.db.repositories.pair_repository import find_all_pairs
+from app.db.repositories.pair_repository import find_all_pairs_by_maestro_id
 from app.utils.math_utils import recalculate_round_average
 
 NON_EXIST_BEGIN_TIME = datetime.datetime.fromtimestamp(1609459200)
 
 
-async def fill_missed_liquidity_intervals() -> None:
+async def fill_missed_liquidity_intervals(maestro_id: UUID) -> None:
     async with get_async_db() as session:
-        pairs = await find_all_pairs(session)
+        pairs = await find_all_pairs_by_maestro_id(session, maestro_id)
 
         for pair in pairs:
             # Find latest liquidity record for the specified pair id

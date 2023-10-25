@@ -9,6 +9,7 @@ from app.db.models.exchange import ExchangeModel
 from app.db.models.order_book import OrderBookModel
 from app.db.models.pair import PairModel
 from app.db.models.liquidity import Liquidity
+from app.db.models.maestro import MaestroInstanceModel
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

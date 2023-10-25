@@ -30,8 +30,7 @@ async def find_all_between_time_range(
     end_time: DateTime,
     pair_id: UUID,
 ) -> list[OrderBookModel]:
-    # Select raw data ordering it by pair id and creation time
-    stmt = (
+    query = (
         select(OrderBookModel)
         .where(
             and_(
@@ -42,7 +41,6 @@ async def find_all_between_time_range(
         .order_by(asc(OrderBookModel.created_at))
     )
 
-    # Return result of statement
-    result = await session.execute(stmt)
+    result = await session.execute(query)
 
     return result.scalars().all()
