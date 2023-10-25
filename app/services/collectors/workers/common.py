@@ -10,8 +10,8 @@ from app.utils.time_utils import is_current_time_inside_trading_sessions
 class Worker(ABC):
     async def run(self) -> None:
         if (
-            not is_current_time_inside_trading_sessions(trading_sessions)
-            and not settings.PYTHON_ENV == "DEV"
+            settings.IS_TRADING_SESSION_VERIFICATION_REQUIRED
+            and not is_current_time_inside_trading_sessions(trading_sessions)
         ):
             return
         else:
