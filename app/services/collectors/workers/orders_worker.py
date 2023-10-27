@@ -29,7 +29,7 @@ class AnomalyKey(NamedTuple):
     type: Literal["ask", "bid"]
 
 
-class ObservingOrderAnomaly(NamedTuple):
+class OrderAnomalyDto(NamedTuple):
     time: float
     order_anomaly: OrderAnomaly
 
@@ -44,16 +44,20 @@ class OrdersWorker(Worker):
         anomalies_observing_ttl: int = settings.ANOMALIES_OBSERVING_TTL,
         anomalies_observing_ratio: float = settings.ANOMALIES_OBSERVING_RATIO,
         top_n_orders: int = settings.TOP_N_ORDERS,
+        anomalies_significantly_increased_ratio: float = settings.ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO,
     ):
         self._collector = collector
         self._discord_messenger = discord_messenger
-        self._detected_anomalies: Dict[AnomalyKey, float] = {}
-        self._observing_anomalies: Dict[AnomalyKey, ObservingOrderAnomaly] = {}
+        self._detected_anomalies: Dict[AnomalyKey, OrderAnomalyDto] = {}
+        self._observing_anomalies: Dict[AnomalyKey, OrderAnomalyDto] = {}
         self._orders_anomaly_multiplier = Decimal(order_anomaly_multiplier)
         self._anomalies_detection_ttl = anomalies_detection_ttl
         self._anomalies_observing_ttl = anomalies_observing_ttl
         self._anomalies_observing_ratio = Decimal(anomalies_observing_ratio)
         self._top_n_orders = top_n_orders
+        self._anomalies_significantly_increased_ratio = (
+            anomalies_significantly_increased_ratio
+        )
 
     @set_interval(settings.ORDERS_WORKER_JOB_INTERVAL)
     async def run(self) -> None:
@@ -149,33 +153,68 @@ class OrdersWorker(Worker):
             anomaly_key = AnomalyKey(price=anomaly.price, type=anomaly.type)
             anomaly_keys.add(anomaly_key)
 
+            # Additional filter logic only for first position anomalies
             if self.__handle_first_position_anomaly(
-                anomaly, current_time, anomaly_key
+                anomaly, anomaly_key, current_time
             ):
                 filtered_anomalies.append(anomaly)
                 continue
 
+            # Additional filter logic only for non-first position anomalies
             if self.__handle_other_position_anomaly(
                 anomaly, current_time, anomaly_key
             ):
                 filtered_anomalies.append(anomaly)
 
+        # Delete keys of previous anomalies that now are considered normal
         self.__remove_anomaly_keys(self._detected_anomalies, anomaly_keys)
+
+        # Delete keys of previous anomalies that were sent to observing but now are missed
         self.__remove_anomaly_keys(self._observing_anomalies, anomaly_keys)
 
         return filtered_anomalies
 
+    # Common input filter logic for anomalies in any position
+    def __handle_any_position_anomaly(
+        self,
+        anomaly: OrderAnomaly,
+        anomaly_key: AnomalyKey,
+        current_time: float,
+    ) -> bool:
+        # Passed anomaly if it's not cached
+        if anomaly_key not in self._detected_anomalies:
+            return True
+
+        # Passed anomaly if it's cached, but it's volume significantly increased
+        if self.__is_volume_significantly_increased(
+            anomaly=anomaly, anomaly_key=anomaly_key
+        ):
+            return True
+
+        # Passed anomaly if it's was cached, but expired
+        if (
+            self._detected_anomalies[anomaly_key].time
+            < current_time - self._anomalies_detection_ttl
+        ):
+            return True
+
+        return False
+
     def __handle_first_position_anomaly(
         self,
         anomaly: OrderAnomaly,
-        current_time: float,
         anomaly_key: AnomalyKey,
+        current_time: float,
     ) -> bool:
         if anomaly.position != 0:
             return False
 
-        if anomaly_key not in self._detected_anomalies:
-            self._detected_anomalies[anomaly_key] = current_time
+        if self.__handle_any_position_anomaly(
+            anomaly=anomaly, anomaly_key=anomaly_key, current_time=current_time
+        ):
+            self._detected_anomalies[anomaly_key] = OrderAnomalyDto(
+                time=current_time, order_anomaly=anomaly
+            )
             self._observing_anomalies.pop(anomaly_key, None)
             return True
 
@@ -187,30 +226,9 @@ class OrdersWorker(Worker):
         current_time: float,
         anomaly_key: AnomalyKey,
     ) -> bool:
-        detected_anomaly = self._detected_anomalies.get(anomaly_key)
         observing_anomaly = self._observing_anomalies.get(anomaly_key)
 
-        if detected_anomaly and detected_anomaly < (
-            current_time - self._anomalies_detection_ttl
-        ):
-            self._detected_anomalies.pop(anomaly_key, None)
-
-        if not observing_anomaly:
-            self._detected_anomalies[anomaly_key] = current_time
-            self._observing_anomalies[anomaly_key] = ObservingOrderAnomaly(
-                order_anomaly=OrderAnomaly(
-                    price=anomaly.price,
-                    quantity=anomaly.quantity,
-                    order_liquidity=anomaly.order_liquidity,
-                    average_liquidity=anomaly.average_liquidity,
-                    position=anomaly.position,
-                    type=anomaly.type,
-                ),
-                time=current_time,
-            )
-            return False
-
-        if observing_anomaly.time < (
+        if observing_anomaly and observing_anomaly.time < (
             current_time - self._anomalies_observing_ttl
         ):
             deviation = (
@@ -227,6 +245,18 @@ class OrdersWorker(Worker):
             else:
                 self._observing_anomalies.pop(anomaly_key, None)
                 return False
+
+        if self.__handle_any_position_anomaly(
+            anomaly, anomaly_key, current_time
+        ):
+            order_anomaly: OrderAnomalyDto = OrderAnomalyDto(
+                order_anomaly=anomaly, time=current_time
+            )
+
+            self._detected_anomalies[anomaly_key] = order_anomaly
+            self._observing_anomalies[anomaly_key] = order_anomaly
+
+            return False
 
         return False
 
@@ -245,4 +275,15 @@ class OrdersWorker(Worker):
             sorted(orders.items(), key=lambda item: item[0], reverse=reverse)[
                 : self._top_n_orders
             ]
+        )
+
+    def __is_volume_significantly_increased(
+        self, anomaly: OrderAnomaly, anomaly_key: AnomalyKey
+    ) -> bool:
+        cached_volume = self._detected_anomalies[
+            anomaly_key
+        ].order_anomaly.order_liquidity
+        return (
+            anomaly.order_liquidity / cached_volume
+            >= self._anomalies_significantly_increased_ratio
         )
