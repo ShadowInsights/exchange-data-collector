@@ -84,6 +84,7 @@ class OrdersWorker(Worker):
                     order_liquidity=anomaly.order_liquidity,
                     average_liquidity=anomaly.average_liquidity,
                     type=anomaly.type,
+                    position=anomaly.position,
                 )
                 for anomaly in filtered_anomalies
             ]
@@ -149,6 +150,11 @@ class OrdersWorker(Worker):
         filtered_anomalies = []
         anomaly_keys = set()
 
+        # Remove expired anomalies keys in cache
+        self.__remove_expired_anomaly_keys(
+            anomalies_dict=self._detected_anomalies, current_time=current_time
+        )
+
         for anomaly in anomalies:
             anomaly_key = AnomalyKey(price=anomaly.price, type=anomaly.type)
             anomaly_keys.add(anomaly_key)
@@ -165,9 +171,6 @@ class OrdersWorker(Worker):
                 anomaly, current_time, anomaly_key
             ):
                 filtered_anomalies.append(anomaly)
-
-        # Delete keys of previous anomalies that now are considered normal
-        self.__remove_anomaly_keys(self._detected_anomalies, anomaly_keys)
 
         # Delete keys of previous anomalies that were sent to observing but now are missed
         self.__remove_anomaly_keys(self._observing_anomalies, anomaly_keys)
@@ -188,13 +191,6 @@ class OrdersWorker(Worker):
         # Passed anomaly if it's cached, but it's volume significantly increased
         if self.__is_volume_significantly_increased(
             anomaly=anomaly, anomaly_key=anomaly_key
-        ):
-            return True
-
-        # Passed anomaly if it's was cached, but expired
-        if (
-            self._detected_anomalies[anomaly_key].time
-            < current_time - self._anomalies_detection_ttl
         ):
             return True
 
@@ -228,9 +224,11 @@ class OrdersWorker(Worker):
     ) -> bool:
         observing_anomaly = self._observing_anomalies.get(anomaly_key)
 
+        # Check if we placed this anomaly before for observing and its time for making conclusion has come
         if observing_anomaly and observing_anomaly.time < (
             current_time - self._anomalies_observing_ttl
         ):
+            # Calculating volume change during observing time
             deviation = (
                 abs(
                     observing_anomaly.order_anomaly.order_liquidity
@@ -239,6 +237,7 @@ class OrdersWorker(Worker):
                 / observing_anomaly.order_anomaly.order_liquidity
             )
 
+            # It's anomaly, if deviation of volume is less than ratio in settings
             if deviation < self._anomalies_observing_ratio:
                 self._observing_anomalies.pop(anomaly_key, None)
                 return True
@@ -246,6 +245,7 @@ class OrdersWorker(Worker):
                 self._observing_anomalies.pop(anomaly_key, None)
                 return False
 
+        # if conditions are met, place for observing and in cache
         if self.__handle_any_position_anomaly(
             anomaly, anomaly_key, current_time
         ):
@@ -264,6 +264,20 @@ class OrdersWorker(Worker):
         self, anomalies_dict: Dict, anomaly_keys: Set
     ) -> None:
         keys_to_remove = set(anomalies_dict.keys()) - anomaly_keys
+        for key in keys_to_remove:
+            del anomalies_dict[key]
+
+    def __remove_expired_anomaly_keys(
+        self,
+        anomalies_dict: Dict[AnomalyKey, OrderAnomalyDto],
+        current_time: float,
+    ) -> None:
+        keys_to_remove = [
+            key
+            for key, value in anomalies_dict.items()
+            if value.time < current_time - self._anomalies_detection_ttl
+        ]
+
         for key in keys_to_remove:
             del anomalies_dict[key]
 

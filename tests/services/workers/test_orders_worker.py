@@ -6,15 +6,12 @@ import pytest
 
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector
-from app.services.collectors.workers.orders_worker import (
-    AnomalyKey,
-    OrderAnomaly,
-    OrderAnomalyDto,
-    OrdersWorker,
-)
-from app.services.messengers.order_book_discord_messenger import (
-    OrderAnomalyNotification,
-)
+from app.services.collectors.workers.orders_worker import (AnomalyKey,
+                                                           OrderAnomaly,
+                                                           OrderAnomalyDto,
+                                                           OrdersWorker)
+from app.services.messengers.order_book_discord_messenger import \
+    OrderAnomalyNotification
 
 
 class MockCollector(Collector):
@@ -100,6 +97,7 @@ async def test_valid_anomaly_detection_first_positions(
             order_liquidity=Decimal("245700.00"),
             average_liquidity=Decimal("27500.00"),
             type="ask",
+            position=0,
         ),
         OrderAnomalyNotification(
             price=Decimal("27200.0"),
@@ -107,6 +105,7 @@ async def test_valid_anomaly_detection_first_positions(
             order_liquidity=Decimal("244800.00"),
             average_liquidity=Decimal("54033.33333333333333333333333"),
             type="bid",
+            position=0,
         ),
     ]
 
@@ -315,6 +314,7 @@ async def test_non_first_already_observing_anomalies_for_notification_after_expi
             order_liquidity=Decimal("220000.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
             type="ask",
+            position=2,
         ),
         OrderAnomalyNotification(
             price=Decimal("27000.0"),
@@ -322,6 +322,7 @@ async def test_non_first_already_observing_anomalies_for_notification_after_expi
             order_liquidity=Decimal("221400.00"),
             average_liquidity=Decimal("36100.00"),
             type="bid",
+            position=2,
         ),
     ]
 
@@ -1155,3 +1156,64 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_input_a
     assert worker._detected_anomalies == order_anomaly_dto
 
     assert worker._observing_anomalies == order_anomaly_dto
+
+
+@patch(
+    "app.services.collectors.workers.orders_worker.OrderBookDiscordMessenger.send_notifications",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.collectors.workers.orders_worker.get_current_time",
+)
+async def test_deleting_expired_keys_from_cache_that_doesnt_exist_in_order_book(
+    mock_get_current_time: Mock,
+    mock_order_book_discord_messenger: AsyncMock,
+    collector: Collector,
+) -> None:
+    current_time = 10
+    mock_get_current_time.return_value = current_time
+    collector.order_book = OrderBookSnapshot(
+        lastUpdateId=1,
+        bids={
+            Decimal("27200.0"): Decimal("1.0"),
+            Decimal("27100.0"): Decimal("2.0"),
+            Decimal("27000.0"): Decimal("5.2"),
+            Decimal("26900.0"): Decimal("1.0"),
+            Decimal("26800.0"): Decimal("4.0"),
+        },
+        asks={
+            Decimal("27300.0"): Decimal("1.0"),
+            Decimal("27400.0"): Decimal("1.0"),
+            Decimal("27600.0"): Decimal("4.0"),
+            Decimal("27500.0"): Decimal("4.0"),
+            Decimal("27800.0"): Decimal("4.0"),
+        },
+    )
+    worker = OrdersWorker(
+        collector=collector,
+        discord_messenger=mock_order_book_discord_messenger,
+        order_anomaly_multiplier=5,
+        anomalies_detection_ttl=3,
+        anomalies_observing_ttl=5,
+        anomalies_observing_ratio=0.2,
+        anomalies_significantly_increased_ratio=2,
+        top_n_orders=4,
+    )
+
+    worker._detected_anomalies = {
+        AnomalyKey(price=Decimal("27900.0"), type="ask"): OrderAnomalyDto(
+            time=2,
+            order_anomaly=OrderAnomaly(
+                price=Decimal("27900.0"),
+                quantity=Decimal("20.0"),
+                order_liquidity=Decimal("552000.00"),
+                average_liquidity=Decimal("54900.00"),
+                position=3,
+                type="ask",
+            ),
+        )
+    }
+
+    await worker._run_worker()
+
+    assert worker._detected_anomalies == {}
