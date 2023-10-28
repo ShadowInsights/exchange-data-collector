@@ -20,6 +20,7 @@ class OrderAnomalyNotification(NamedTuple):
     order_liquidity: Decimal
     average_liquidity: Decimal
     type: Literal["ask", "bid"]
+    position: int
 
 
 class OrderBookDiscordMessenger(DiscordMessenger):
@@ -51,18 +52,26 @@ class OrderBookDiscordMessenger(DiscordMessenger):
                 name="Order",
                 value=f"Price: {formatted_price}\nQuantity: "
                 f"{formatted_quantity}",
+                inline=True,
             )
             average_liquidity_field = Field(
                 name="Average liquidity",
                 value=add_comma_every_n_symbols(
                     "{:.2f}".format(anomaly.average_liquidity)
                 ),
+                inline=True,
             )
             order_liquidity_field = Field(
                 name="Order liquidity",
                 value=add_comma_every_n_symbols(
                     "{:.2f}".format(anomaly.order_liquidity)
                 ),
+                inline=True,
+            )
+            order_position = Field(
+                name="Order position",
+                value="Market" if anomaly.position == 0 else "Limit",
+                inline=False,
             )
             message = BaseMessage(
                 title=title,
@@ -71,6 +80,7 @@ class OrderBookDiscordMessenger(DiscordMessenger):
                     order_field,
                     order_liquidity_field,
                     average_liquidity_field,
+                    order_position,
                 ],
             )
             if anomaly.type == "ask":

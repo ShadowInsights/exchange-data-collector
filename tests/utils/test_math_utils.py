@@ -1,8 +1,5 @@
-from app.utils.math_utils import (
-    calculate_avg,
-    calculate_round_avg,
-    recalculate_round_average,
-)
+from app.utils.math_utils import (calculate_avg, calculate_round_avg,
+                                  recalculate_round_average)
 
 
 def test_round_recalc_avg():

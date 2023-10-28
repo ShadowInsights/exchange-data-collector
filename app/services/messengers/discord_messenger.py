@@ -47,7 +47,7 @@ class DiscordMessenger(BaseMessenger):
 
         for field in message.fields:
             embed.add_embed_field(
-                name=field.name, value=field.value, inline=True
+                name=field.name, value=field.value, inline=field.inline
             )
 
         return embed
