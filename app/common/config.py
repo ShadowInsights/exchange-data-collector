@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     LIQUIDITY_ANOMALY_RATIO: float
     COMPARABLE_LIQUIDITY_SET_SIZE: int
+    ORDER_ANOMALY_MINIMUM_LIQUIDITY: float
 
     TOP_N_ORDERS: int = 15
     ORDER_ANOMALY_MULTIPLIER: float = 10

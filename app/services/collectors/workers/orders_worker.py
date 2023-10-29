@@ -10,8 +10,12 @@ from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker
 from app.services.messengers.order_book_discord_messenger import (
-    OrderAnomalyNotification, OrderBookDiscordMessenger)
-from app.utils.math_utils import calculate_avg
+    OrderAnomalyNotification,
+    OrderBookDiscordMessenger,
+)
+from app.utils.math_utils import (
+    calculate_average_excluding_value_from_sum,
+)
 from app.utils.scheduling_utils import set_interval
 from app.utils.time_utils import get_current_time
 
@@ -47,6 +51,7 @@ class OrdersWorker(Worker):
         top_n_orders: int = settings.TOP_N_ORDERS,
         anomalies_significantly_increased_ratio: float = settings.ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO,
         executor_factory: concurrent.futures.Executor = None,
+        order_anomaly_minimum_liquidity: float = settings.ORDER_ANOMALY_MINIMUM_LIQUIDITY,
     ):
         self._collector = collector
         self._discord_messenger = discord_messenger
@@ -63,6 +68,9 @@ class OrdersWorker(Worker):
         # TODO: add support for different executor types
         self._executor_factory = (
             executor_factory or concurrent.futures.ThreadPoolExecutor
+        )
+        self._order_anomaly_minimum_liquidity = Decimal(
+            order_anomaly_minimum_liquidity
         )
 
     @set_interval(settings.ORDERS_WORKER_JOB_INTERVAL)
@@ -141,23 +149,37 @@ class OrdersWorker(Worker):
         if not top_orders:
             return []
 
+        positions_liquidity = [p * q for p, q in top_orders.items()]
+        order_book_liquidity = sum(positions_liquidity)
+
         anomalies = []
         for position, (price, qty) in enumerate(top_orders.items()):
-            liquidity = price * qty
-            avg_liquidity = calculate_avg(
-                [p * q for p, q in top_orders.items() if p != price],
-                (len(top_orders) - 1),
+            position_liquidity = positions_liquidity[int(position)]
+
+            # Skip anomaly if its liquidity less than minimum
+            if position_liquidity < self._order_anomaly_minimum_liquidity:
+                continue
+
+            avg_liquidity = calculate_average_excluding_value_from_sum(
+                order_book_liquidity, len(top_orders) - 1, position_liquidity
             )
             biggest_order = max(
-                [p * q for p, q in top_orders.items() if p != price]
+                [
+                    liquidity
+                    for liquidity in positions_liquidity
+                    if liquidity != position_liquidity
+                ]
             )
 
-            if liquidity > self._orders_anomaly_multiplier * biggest_order:
+            if (
+                position_liquidity
+                > self._orders_anomaly_multiplier * biggest_order
+            ):
                 anomalies.append(
                     OrderAnomaly(
                         price,
                         qty,
-                        liquidity,
+                        position_liquidity,
                         avg_liquidity,
                         position,
                         order_type,
@@ -205,13 +227,12 @@ class OrdersWorker(Worker):
         self,
         anomaly: OrderAnomaly,
         anomaly_key: AnomalyKey,
-        current_time: float,
     ) -> bool:
-        # Passed anomaly if it's not cached
+        # Pass anomaly if it's not cached
         if anomaly_key not in self._detected_anomalies:
             return True
 
-        # Passed anomaly if it's cached, but it's volume significantly increased
+        # Pass anomaly if it's cached, but it's volume significantly increased
         if self.__is_volume_significantly_increased(
             anomaly=anomaly, anomaly_key=anomaly_key
         ):
@@ -229,7 +250,7 @@ class OrdersWorker(Worker):
             return False
 
         if self.__handle_any_position_anomaly(
-            anomaly=anomaly, anomaly_key=anomaly_key, current_time=current_time
+            anomaly=anomaly, anomaly_key=anomaly_key
         ):
             self._detected_anomalies[anomaly_key] = OrderAnomalyDto(
                 time=current_time, order_anomaly=anomaly
@@ -270,7 +291,7 @@ class OrdersWorker(Worker):
 
         # if conditions are met, place for observing and in cache
         if self.__handle_any_position_anomaly(
-            anomaly, anomaly_key, current_time
+            anomaly=anomaly, anomaly_key=anomaly_key
         ):
             order_anomaly: OrderAnomalyDto = OrderAnomalyDto(
                 order_anomaly=anomaly, time=current_time
