@@ -1,6 +1,6 @@
 # Use an official lightweight Python image.
 # https://hub.docker.com/_/python
-FROM python:3.10-slim as builder
+FROM python:3.12-slim as builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED 1
 
 # Install system dependencies and poetry
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && apt-get install -y --no-install-recommends gcc libpq-dev build-essential \
     && pip install --upgrade pip \
     && pip install poetry
 
@@ -20,12 +20,12 @@ COPY pyproject.toml poetry.lock /app/
 
 # Project initialization:
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-dev  # Only install runtime dependencies
+    && poetry install --only main
 
 # -----
 
 # Production Image
-FROM python:3.10-slim as production
+FROM python:3.12-slim as production
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -42,7 +42,7 @@ RUN addgroup --system app && adduser --system --group app
 WORKDIR /home/app
 
 # Copy the content from the builder stage
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /app /app
 COPY ./app /home/app/app
 
