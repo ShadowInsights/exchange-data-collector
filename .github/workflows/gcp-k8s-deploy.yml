@@ -61,7 +61,7 @@ jobs:
     - name: Deploy
       run: |-
         # Update the Deployment with the new image
-        kubectl set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA
+        kubectl set image deployment/$DEPLOYMENT_NAME $DEPLOYMENT_NAME=$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA
         # Check the rollout status
         kubectl rollout status deployment/$DEPLOYMENT_NAME
         kubectl get services -o wide
