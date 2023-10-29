@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 import copy
 import logging
 
@@ -21,12 +22,17 @@ class LiquidityWorker(Worker):
         discord_messenger: LiquidityDiscordMessenger,
         comparable_liquidity_set_size: int = settings.COMPARABLE_LIQUIDITY_SET_SIZE,
         liquidity_anomaly_ratio: float = settings.LIQUIDITY_ANOMALY_RATIO,
+        executor_factory: concurrent.futures.Executor = None,
     ):
         self._collector = collector
         self._discord_messenger = discord_messenger
         self._comparable_liquidity_set_size = comparable_liquidity_set_size
         self._liquidity_anomaly_ratio = liquidity_anomaly_ratio
         self._last_avg_volumes = self._find_last_average_volumes()
+        # TODO: add support for different executor types
+        self._executor_factory = (
+            executor_factory or concurrent.futures.ThreadPoolExecutor
+        )
 
     @set_interval(settings.LIQUIDITY_WORKER_JOB_INTERVAL)
     async def run(self) -> None:
@@ -41,7 +47,24 @@ class LiquidityWorker(Worker):
         await self._save_liquidity_record(average_volume)
 
         # Perform anomaly analysis
-        await self._perform_anomaly_analysis(average_volume)
+        with self._executor_factory() as executor:
+            deviation = await asyncio.get_event_loop().run_in_executor(
+                executor, self._perform_anomaly_analysis, average_volume
+            )
+
+        # Send alert notification via standard messenger implementation
+        if deviation:
+            asyncio.create_task(
+                self._discord_messenger.send_notification(
+                    pair_id=self._collector.pair_id,
+                    deviation=deviation,
+                    current_avg_volume=round(average_volume),
+                    previous_avg_volume=calculate_round_avg(
+                        self._last_avg_volumes,
+                        self._comparable_liquidity_set_size,
+                    ),
+                )
+            )
 
     async def _save_liquidity_record(self, avg_volume: float) -> None:
         async with (get_async_db() as session):
@@ -53,7 +76,9 @@ class LiquidityWorker(Worker):
                 pair_id=self._collector.pair_id,
             )
 
-    async def _perform_anomaly_analysis(self, average_volume: float) -> None:
+    def _perform_anomaly_analysis(self, average_volume: float) -> float | None:
+        result = None
+
         # if comparable liquidity set size is not optimal, then just add saved liquidity record to set
         if len(self._last_avg_volumes) != self._comparable_liquidity_set_size:
             self._last_avg_volumes.append(average_volume)
@@ -72,19 +97,7 @@ class LiquidityWorker(Worker):
             logging.info(
                 "Found anomaly inflow of volume. Sending alert notification..."
             )
-
-            # Send alert notification via standard messenger implementation
-            asyncio.create_task(
-                self._discord_messenger.send_notification(
-                    pair_id=self._collector.pair_id,
-                    deviation=deviation,
-                    current_avg_volume=round(average_volume),
-                    previous_avg_volume=calculate_round_avg(
-                        self._last_avg_volumes,
-                        self._comparable_liquidity_set_size,
-                    ),
-                )
-            )
+            result = deviation
 
         # Update avg volumes queue with last avg volume
         self._last_avg_volumes.pop(0)
@@ -92,6 +105,8 @@ class LiquidityWorker(Worker):
 
         # Clean volume stats for elapsed time period
         self._collector.clear_volume_stats()
+
+        return result
 
     def _find_last_average_volumes(self) -> list:
         with get_sync_db() as session:

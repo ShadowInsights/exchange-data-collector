@@ -41,7 +41,7 @@ def collector() -> Collector:
 @patch(
     "app.services.collectors.workers.liquidity_worker.LiquidityWorker._find_last_average_volumes"
 )
-async def test_non_anomaly_anomaly_and_no_messenger_ping(
+def test_non_anomaly_anomaly(
     mock_find_last_average_volumes: Mock,
     mock_liquidity_discord_messenger: AsyncMock,
     collector: Collector,
@@ -57,13 +57,10 @@ async def test_non_anomaly_anomaly_and_no_messenger_ping(
         liquidity_anomaly_ratio=2,
     )
 
-    await worker._perform_anomaly_analysis(average_volume)
+    deviation = worker._perform_anomaly_analysis(average_volume)
 
-    assert mock_liquidity_discord_messenger.send_notification.call_count == 0
-
+    assert deviation is None
     assert worker._last_avg_volumes == [16, 23231, 11, 0, 3000]
-
-    assert collector.avg_volume == 0
 
 
 @patch(
@@ -73,7 +70,7 @@ async def test_non_anomaly_anomaly_and_no_messenger_ping(
 @patch(
     "app.services.collectors.workers.liquidity_worker.LiquidityWorker._find_last_average_volumes"
 )
-async def test_inflow_anomaly_detection_and_messenger_ping(
+def test_inflow_anomaly_detection(
     mock_find_last_average_volumes: Mock,
     mock_liquidity_discord_messenger: AsyncMock,
     collector: Collector,
@@ -89,13 +86,11 @@ async def test_inflow_anomaly_detection_and_messenger_ping(
         liquidity_anomaly_ratio=2,
     )
 
-    await worker._perform_anomaly_analysis(average_volume)
+    deviation = worker._perform_anomaly_analysis(average_volume)
 
-    assert mock_liquidity_discord_messenger.send_notification.call_count == 1
-
-    assert worker._last_avg_volumes == [20, 30, 40]
-
+    assert deviation is not None
     assert collector.avg_volume == 0
+    assert worker._last_avg_volumes == [20, 30, 40]
 
 
 @patch(
@@ -105,7 +100,7 @@ async def test_inflow_anomaly_detection_and_messenger_ping(
 @patch(
     "app.services.collectors.workers.liquidity_worker.LiquidityWorker._find_last_average_volumes"
 )
-async def test_outflow_anomaly_detection_and_messenger_ping(
+def test_outflow_anomaly_detection(
     mock_find_last_average_volumes: Mock,
     mock_liquidity_discord_messenger: AsyncMock,
     collector: Collector,
@@ -121,12 +116,10 @@ async def test_outflow_anomaly_detection_and_messenger_ping(
         liquidity_anomaly_ratio=1.5,
     )
 
-    await worker._perform_anomaly_analysis(average_volume)
+    deviation = worker._perform_anomaly_analysis(average_volume)
 
-    assert mock_liquidity_discord_messenger.send_notification.call_count == 1
-
+    assert deviation is not None
     assert worker._last_avg_volumes == [315291, 723125, 250000]
-
     assert collector.avg_volume == 0
 
 
@@ -136,7 +129,7 @@ async def test_outflow_anomaly_detection_and_messenger_ping(
 @patch(
     "app.services.collectors.workers.liquidity_worker.LiquidityWorker._find_last_average_volumes"
 )
-async def test_not_enough_last_average_volumes_and_filling_this_array_with_latest_volume(
+def test_not_enough_last_average_volumes_and_filling_this_array_with_latest_volume(
     mock_find_last_average_volumes: Mock,
     mock_liquidity_discord_messenger: AsyncMock,
     collector: Collector,
@@ -152,12 +145,10 @@ async def test_not_enough_last_average_volumes_and_filling_this_array_with_lates
         liquidity_anomaly_ratio=2,
     )
 
-    await worker._perform_anomaly_analysis(average_volume)
+    worker._perform_anomaly_analysis(average_volume)
 
     assert len(worker._last_avg_volumes) == 2
-
     assert worker._last_avg_volumes[1] == 15
-
     assert collector.avg_volume == 0
 
 
@@ -192,3 +183,67 @@ async def test_saving_liquidity_record(
     await worker._run_worker()
 
     assert mock_save_liquidity.call_count == 1
+
+
+@patch(
+    "app.services.collectors.workers.orders_worker.OrderBookDiscordMessenger.send_notifications",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.collectors.workers.liquidity_worker.LiquidityWorker._find_last_average_volumes"
+)
+@patch(
+    "app.services.collectors.workers.liquidity_worker.save_liquidity",
+    new_callable=AsyncMock,
+)
+async def test_test_non_anomaly_anomaly_not_send_notification(
+    mock_save_liquidity: AsyncMock,
+    mock_find_last_average_volumes: Mock,
+    mock_liquidity_discord_messenger: AsyncMock,
+    collector: Collector,
+) -> None:
+    mock_find_last_average_volumes.return_value = [32, 16, 23231, 11, 0]
+
+    worker = LiquidityWorker(
+        collector=collector,
+        discord_messenger=mock_liquidity_discord_messenger,
+        comparable_liquidity_set_size=5,
+        liquidity_anomaly_ratio=2,
+    )
+
+    await worker._run_worker()
+
+    assert mock_liquidity_discord_messenger.send_notification.call_count == 0
+
+
+@patch(
+    "app.services.collectors.workers.orders_worker.OrderBookDiscordMessenger.send_notifications",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.collectors.workers.liquidity_worker.LiquidityWorker._find_last_average_volumes"
+)
+@patch(
+    "app.services.collectors.workers.liquidity_worker.save_liquidity",
+    new_callable=AsyncMock,
+)
+async def test_test_anomaly_anomaly_send_notification(
+    mock_save_liquidity: AsyncMock,
+    mock_find_last_average_volumes: Mock,
+    mock_liquidity_discord_messenger: AsyncMock,
+    collector: Collector,
+) -> None:
+    mock_find_last_average_volumes.return_value = [100, 200, 300]
+
+    collector.avg_volume = 250000
+
+    worker = LiquidityWorker(
+        collector=collector,
+        discord_messenger=mock_liquidity_discord_messenger,
+        comparable_liquidity_set_size=3,
+        liquidity_anomaly_ratio=2,
+    )
+
+    await worker._run_worker()
+
+    assert mock_liquidity_discord_messenger.send_notification.call_count == 1

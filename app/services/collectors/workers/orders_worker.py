@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 import copy
 import logging
 from decimal import Decimal
@@ -45,6 +46,7 @@ class OrdersWorker(Worker):
         anomalies_observing_ratio: float = settings.ANOMALIES_OBSERVING_RATIO,
         top_n_orders: int = settings.TOP_N_ORDERS,
         anomalies_significantly_increased_ratio: float = settings.ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO,
+        executor_factory: concurrent.futures.Executor = None,
     ):
         self._collector = collector
         self._discord_messenger = discord_messenger
@@ -58,6 +60,10 @@ class OrdersWorker(Worker):
         self._anomalies_significantly_increased_ratio = (
             anomalies_significantly_increased_ratio
         )
+        # TODO: add support for different executor types
+        self._executor_factory = (
+            executor_factory or concurrent.futures.ThreadPoolExecutor
+        )
 
     @set_interval(settings.ORDERS_WORKER_JOB_INTERVAL)
     async def run(self) -> None:
@@ -70,11 +76,8 @@ class OrdersWorker(Worker):
         logging.debug(
             f"Orders processing cycle started [symbol={self._collector.symbol}]"
         )
-        current_order_book = self.__group_orders(
-            copy.deepcopy(self._collector.order_book)
-        )
-        anomalies = self.__find_anomalies(current_order_book)
-        filtered_anomalies = self.__filter_anomalies(anomalies)
+
+        filtered_anomalies = await self.__get_filtered_anomalies()
 
         if filtered_anomalies:
             order_anomaly_notifications = [
@@ -95,14 +98,34 @@ class OrdersWorker(Worker):
                 )
             )
 
-    def __group_orders(self, order_book: OrderBookSnapshot) -> OrderBook:
+    async def __get_filtered_anomalies(self):
+        order_book = copy.deepcopy(self._collector.order_book)
+        delimiter = copy.deepcopy(self._collector.delimiter)
+
+        with self._executor_factory() as executor:
+            result = await asyncio.get_event_loop().run_in_executor(
+                executor,
+                self.__calculate_filtered_anomalies,
+                order_book,
+                delimiter,
+            )
+
+        return result
+
+    def __calculate_filtered_anomalies(
+        self, order_book: OrderBookSnapshot, delimiter: Decimal
+    ):
+        current_order_book = self.__group_orders(order_book, delimiter)
+        anomalies = self.__find_anomalies(current_order_book)
+        filtered_anomalies = self.__filter_anomalies(anomalies)
+        return filtered_anomalies
+
+    def __group_orders(
+        self, order_book: OrderBookSnapshot, delimiter: Decimal
+    ) -> OrderBook:
         return OrderBook(
-            a=self.group_order_book(
-                order_book.asks, self._collector.delimiter
-            ),
-            b=self.group_order_book(
-                order_book.bids, self._collector.delimiter
-            ),
+            a=self.group_order_book(order_book.asks, delimiter),
+            b=self.group_order_book(order_book.bids, delimiter),
         )
 
     def __find_anomalies(self, order_book: OrderBook) -> List[OrderAnomaly]:
