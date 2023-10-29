@@ -9,13 +9,19 @@ from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-from app.common.config import DB_CONNECTION_STRING, DB_CONNECTION_STRING_ASYNC
+from app.common.config import (DB_CONNECTION_STRING,
+                               DB_CONNECTION_STRING_ASYNC, settings)
 
 logger = logging.getLogger(__name__)
 
 async_engine = create_async_engine(
     DB_CONNECTION_STRING_ASYNC,
     echo=False,
+    pool_pre_ping=True,
+    pool_size=settings.POSTGRES_POOL_SIZE,
+    max_overflow=settings.POSTGRES_MAX_OVERFLOW,
+    pool_timeout=settings.POSTGRES_POOL_TIMEOUT,
+    pool_recycle=settings.POSTGRES_POOL_RECYCLE,
 )
 engine = create_engine(DB_CONNECTION_STRING)
 
