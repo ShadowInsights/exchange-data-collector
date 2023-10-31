@@ -42,6 +42,7 @@ class LiquidityWorker(Worker):
         logging.debug("Saving liquidity record")
 
         average_volume = copy.deepcopy(self._collector.avg_volume)
+        last_avg_volume = copy.deepcopy(self._last_avg_volumes)
 
         # Save liquidity record
         await self._save_liquidity_record(average_volume)
@@ -60,14 +61,14 @@ class LiquidityWorker(Worker):
                     deviation=deviation,
                     current_avg_volume=round(average_volume),
                     previous_avg_volume=calculate_round_avg(
-                        self._last_avg_volumes,
+                        last_avg_volume,
                         self._comparable_liquidity_set_size,
                     ),
                 )
             )
 
     async def _save_liquidity_record(self, avg_volume: float) -> None:
-        async with (get_async_db() as session):
+        async with get_async_db() as session:
             # Save  runtime liquidity record
             await save_liquidity(
                 session,
