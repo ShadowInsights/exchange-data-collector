@@ -695,7 +695,7 @@ async def test_skipping_non_first_position_anomaly_that_has_non_expired_key_in_c
     worker = OrdersWorker(
         collector=collector,
         discord_messenger=mock_order_book_discord_messenger,
-        order_anomaly_multiplier=3,
+        order_anomaly_multiplier=6,
         anomalies_detection_ttl=4,
         anomalies_observing_ttl=4,
         anomalies_observing_ratio=0.2,
@@ -1266,3 +1266,103 @@ async def test_valid_anomaly_detection_first_positions_not_match_minimum_liquidi
     assert mock_order_book_discord_messenger.send_notifications.call_count == 0
     assert worker._detected_anomalies == {}
     assert worker._observing_anomalies == {}
+
+
+@patch(
+    "app.services.collectors.workers.orders_worker.OrderBookDiscordMessenger.send_notifications",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.collectors.workers.orders_worker.get_current_time",
+)
+async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_overbook_none_found(
+    mock_get_current_time: Mock,
+    mock_order_book_discord_messenger: AsyncMock,
+    collector: Collector,
+) -> None:
+    current_time = 1.0
+    mock_get_current_time.return_value = current_time
+    collector.order_book = OrderBookSnapshot(
+        lastUpdateId=1,
+        bids={
+            Decimal("27300.0"): Decimal("1.5"),
+            Decimal("27400.0"): Decimal("1.5"),
+            Decimal("27500.0"): Decimal("1.5"),
+            Decimal("27600.0"): Decimal("3.0"),
+            Decimal("27800.0"): Decimal("3.0"),
+        },
+        asks={
+            Decimal("27300.0"): Decimal("1.5"),
+            Decimal("27400.0"): Decimal("1.5"),
+            Decimal("27500.0"): Decimal("1.5"),
+            Decimal("27600.0"): Decimal("3.0"),
+            Decimal("27800.0"): Decimal("3.0"),
+        },
+    )
+    worker = OrdersWorker(
+        collector=collector,
+        discord_messenger=mock_order_book_discord_messenger,
+        order_anomaly_multiplier=1.5,
+        anomalies_detection_ttl=1,
+        anomalies_observing_ttl=1,
+        anomalies_observing_ratio=0.5,
+        top_n_orders=5,
+        order_anomaly_minimum_liquidity=1000.0,
+        maximum_order_book_anomalies=1,
+    )
+
+    await worker._run_worker()
+
+    assert mock_order_book_discord_messenger.send_notifications.call_count == 0
+    assert worker._detected_anomalies == {}
+    assert worker._observing_anomalies == {}
+
+
+@patch(
+    "app.services.collectors.workers.orders_worker.OrderBookDiscordMessenger.send_notifications",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.collectors.workers.orders_worker.get_current_time",
+)
+async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_overbook(
+    mock_get_current_time: Mock,
+    mock_order_book_discord_messenger: AsyncMock,
+    collector: Collector,
+) -> None:
+    current_time = 1.0
+    mock_get_current_time.return_value = current_time
+    collector.order_book = OrderBookSnapshot(
+        lastUpdateId=1,
+        bids={
+            Decimal("27300.0"): Decimal("1.5"),
+            Decimal("27400.0"): Decimal("1.5"),
+            Decimal("27500.0"): Decimal("1.5"),
+            Decimal("27600.0"): Decimal("3.0"),
+            Decimal("27800.0"): Decimal("3.0"),
+        },
+        asks={
+            Decimal("27300.0"): Decimal("1.5"),
+            Decimal("27400.0"): Decimal("1.5"),
+            Decimal("27500.0"): Decimal("1.5"),
+            Decimal("27600.0"): Decimal("3.0"),
+            Decimal("27800.0"): Decimal("3.0"),
+        },
+    )
+    worker = OrdersWorker(
+        collector=collector,
+        discord_messenger=mock_order_book_discord_messenger,
+        order_anomaly_multiplier=1.5,
+        anomalies_detection_ttl=1,
+        anomalies_observing_ttl=1,
+        anomalies_observing_ratio=0.5,
+        top_n_orders=5,
+        order_anomaly_minimum_liquidity=1000.0,
+        maximum_order_book_anomalies=2,
+    )
+
+    await worker._run_worker()
+
+    assert mock_order_book_discord_messenger.send_notifications.call_count == 1
+    assert len(worker._detected_anomalies) == 4
+    assert len(worker._observing_anomalies) == 3

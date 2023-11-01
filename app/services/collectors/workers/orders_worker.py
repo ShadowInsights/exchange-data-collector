@@ -10,12 +10,8 @@ from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker
 from app.services.messengers.order_book_discord_messenger import (
-    OrderAnomalyNotification,
-    OrderBookDiscordMessenger,
-)
-from app.utils.math_utils import (
-    calculate_average_excluding_value_from_sum,
-)
+    OrderAnomalyNotification, OrderBookDiscordMessenger)
+from app.utils.math_utils import calculate_average_excluding_value_from_sum
 from app.utils.scheduling_utils import set_interval
 from app.utils.time_utils import get_current_time
 
@@ -39,6 +35,13 @@ class OrderAnomalyDto(NamedTuple):
     order_anomaly: OrderAnomaly
 
 
+class PositionedOrder(NamedTuple):
+    position: int
+    price: Decimal
+    quantity: Decimal
+    liquidity: Decimal
+
+
 class OrdersWorker(Worker):
     def __init__(
         self,
@@ -52,6 +55,7 @@ class OrdersWorker(Worker):
         anomalies_significantly_increased_ratio: float = settings.ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO,
         executor_factory: concurrent.futures.Executor = None,
         order_anomaly_minimum_liquidity: float = settings.ORDER_ANOMALY_MINIMUM_LIQUIDITY,
+        maximum_order_book_anomalies: int = settings.MAXIMUM_ORDER_BOOK_ANOMALIES,
     ):
         self._collector = collector
         self._discord_messenger = discord_messenger
@@ -72,6 +76,7 @@ class OrdersWorker(Worker):
         self._order_anomaly_minimum_liquidity = Decimal(
             order_anomaly_minimum_liquidity
         )
+        self._maximum_order_book_anomalies = maximum_order_book_anomalies + 1
 
     @set_interval(settings.ORDERS_WORKER_JOB_INTERVAL)
     async def run(self) -> None:
@@ -143,48 +148,83 @@ class OrdersWorker(Worker):
 
     def __get_anomalies(
         self, orders: Dict[Decimal, Decimal], order_type: Literal["ask", "bid"]
-    ) -> List[OrderAnomaly]:
+    ) -> list[OrderAnomaly]:
         top_orders = self.__get_sorted_top_orders(orders, order_type)
 
-        if not top_orders:
+        if len(top_orders) <= 1:
             return []
 
-        positions_liquidity = [p * q for p, q in top_orders.items()]
-        order_book_liquidity = sum(positions_liquidity)
+        order_book_liquidity = 0
+        positioned_orders: list[PositionedOrder] = []
 
-        anomalies = []
         for position, (price, qty) in enumerate(top_orders.items()):
-            position_liquidity = positions_liquidity[int(position)]
-
-            # Skip anomaly if its liquidity less than minimum
-            if position_liquidity < self._order_anomaly_minimum_liquidity:
-                continue
-
-            avg_liquidity = calculate_average_excluding_value_from_sum(
-                order_book_liquidity, len(top_orders) - 1, position_liquidity
+            order_liquidity = price * qty
+            order_book_liquidity += order_liquidity
+            positioned_orders.append(
+                PositionedOrder(
+                    position=position,
+                    price=price,
+                    quantity=qty,
+                    liquidity=order_liquidity,
+                )
             )
-            biggest_order = max(
-                [
-                    liquidity
-                    for liquidity in positions_liquidity
-                    if liquidity != position_liquidity
-                ]
+
+        sorted_positioned_orders = sorted(
+            positioned_orders, key=lambda order: order.liquidity, reverse=True
+        )
+
+        anomalies: list[OrderAnomaly] = []
+
+        for i in range(1, len(sorted_positioned_orders)):
+            if i == self._maximum_order_book_anomalies:
+                anomalies = []
+                break
+
+            current_order = sorted_positioned_orders[i]
+            previous_order = sorted_positioned_orders[i - 1]
+
+            current_available_liquidity = (
+                calculate_average_excluding_value_from_sum(
+                    order_book_liquidity,
+                    len(sorted_positioned_orders) - 1,
+                    previous_order.liquidity,
+                )
             )
+
+            if previous_order.liquidity < current_available_liquidity / len(
+                sorted_positioned_orders
+            ):
+                break
 
             if (
-                position_liquidity
-                > self._orders_anomaly_multiplier * biggest_order
+                previous_order.liquidity
+                > self._orders_anomaly_multiplier * current_order.liquidity
             ):
-                anomalies.append(
-                    OrderAnomaly(
-                        price,
-                        qty,
-                        position_liquidity,
-                        avg_liquidity,
-                        position,
-                        order_type,
-                    )
-                )
+                if (
+                    current_order.liquidity
+                    < self._order_anomaly_minimum_liquidity
+                ):
+                    break
+                else:
+                    for order in sorted_positioned_orders[:i]:
+                        average_liquidity = (
+                            calculate_average_excluding_value_from_sum(
+                                order_book_liquidity,
+                                len(sorted_positioned_orders) - 1,
+                                previous_order.liquidity,
+                            )
+                        )
+                        anomalies.append(
+                            OrderAnomaly(
+                                price=order.price,
+                                quantity=order.quantity,
+                                order_liquidity=order.liquidity,
+                                average_liquidity=average_liquidity,
+                                position=order.position,
+                                type=order_type,
+                            )
+                        )
+                    break
 
         return anomalies
 
