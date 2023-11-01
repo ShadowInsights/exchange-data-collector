@@ -6,6 +6,10 @@ from decimal import Decimal
 from typing import Dict, List, Literal, NamedTuple, Set
 
 from app.common.config import settings
+from app.common.database import get_async_db
+from app.db.models.order_book_anomaly import OrderBookAnomalyModel
+from app.db.repositories.order_book_anomaly_repository import \
+    create_order_book_anomalies
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker
@@ -93,23 +97,9 @@ class OrdersWorker(Worker):
         filtered_anomalies = await self.__get_filtered_anomalies()
 
         if filtered_anomalies:
-            order_anomaly_notifications = [
-                OrderAnomalyNotification(
-                    price=anomaly.price,
-                    quantity=anomaly.quantity,
-                    order_liquidity=anomaly.order_liquidity,
-                    average_liquidity=anomaly.average_liquidity,
-                    type=anomaly.type,
-                    position=anomaly.position,
-                )
-                for anomaly in filtered_anomalies
-            ]
-            asyncio.create_task(
-                self._discord_messenger.send_notifications(
-                    order_anomaly_notifications,
-                    self._collector.pair_id,
-                )
-            )
+            save_anomalies = self.__save_anomalies(filtered_anomalies)
+            send_anomalies = self.__send_anomalies(filtered_anomalies)
+            await asyncio.gather(save_anomalies, send_anomalies)
 
     async def __get_filtered_anomalies(self):
         order_book = copy.deepcopy(self._collector.order_book)
@@ -124,6 +114,40 @@ class OrdersWorker(Worker):
             )
 
         return result
+
+    async def __save_anomalies(self, anomalies: List[OrderAnomaly]) -> None:
+        order_book_anomalies = [
+            OrderBookAnomalyModel(
+                launch_id=self._collector.launch_id,
+                pair_id=self._collector.pair_id,
+                price=anomaly.price,
+                quantity=anomaly.quantity,
+                order_liquidity=anomaly.order_liquidity,
+                average_liquidity=anomaly.average_liquidity,
+                position=anomaly.position,
+                type=anomaly.type,
+            )
+            for anomaly in anomalies
+        ]
+        async with get_async_db() as session:
+            await create_order_book_anomalies(session, order_book_anomalies)
+
+    async def __send_anomalies(self, anomalies: List[OrderAnomaly]) -> None:
+        order_anomaly_notifications = [
+            OrderAnomalyNotification(
+                price=anomaly.price,
+                quantity=anomaly.quantity,
+                order_liquidity=anomaly.order_liquidity,
+                average_liquidity=anomaly.average_liquidity,
+                type=anomaly.type,
+                position=anomaly.position,
+            )
+            for anomaly in anomalies
+        ]
+        await self._discord_messenger.send_notifications(
+            order_anomaly_notifications,
+            self._collector.pair_id,
+        )
 
     def __calculate_filtered_anomalies(
         self, order_book: OrderBookSnapshot, delimiter: Decimal
