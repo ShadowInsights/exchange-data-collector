@@ -257,7 +257,7 @@ async def test_saving_liquidity_record(
     "app.services.collectors.workers.liquidity_worker.save_liquidity",
     new_callable=AsyncMock,
 )
-async def test_test_non_anomaly_anomaly_not_send_notification(
+async def test_non_anomaly_anomaly_not_send_notification(
     mock_save_liquidity: AsyncMock,
     mock_find_last_average_volumes: Mock,
     mock_liquidity_discord_messenger: AsyncMock,
@@ -288,7 +288,7 @@ async def test_test_non_anomaly_anomaly_not_send_notification(
     "app.services.collectors.workers.liquidity_worker.save_liquidity",
     new_callable=AsyncMock,
 )
-async def test_test_anomaly_anomaly_send_notification(
+async def test_anomaly_anomaly_send_notification(
     mock_save_liquidity: AsyncMock,
     mock_find_last_average_volumes: Mock,
     mock_liquidity_discord_messenger: AsyncMock,
