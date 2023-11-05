@@ -8,8 +8,8 @@ from typing import Dict, List, Literal, NamedTuple, Set
 from app.common.config import settings
 from app.common.database import get_async_db
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
-from app.db.repositories.order_book_anomaly_repository import \
-    create_order_book_anomalies
+from app.db.repositories.order_book_anomaly_repository import (
+    create_order_book_anomalies, merge_and_cancel_anomalies)
 from app.services.clients.schemas.binance import OrderBookSnapshot
 from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker
@@ -34,7 +34,7 @@ class AnomalyKey(NamedTuple):
     type: Literal["ask", "bid"]
 
 
-class OrderAnomalyDto(NamedTuple):
+class OrderAnomalyInTime(NamedTuple):
     time: float
     order_anomaly: OrderAnomaly
 
@@ -60,11 +60,15 @@ class OrdersWorker(Worker):
         executor_factory: concurrent.futures.Executor = None,
         order_anomaly_minimum_liquidity: float = settings.ORDER_ANOMALY_MINIMUM_LIQUIDITY,
         maximum_order_book_anomalies: int = settings.MAXIMUM_ORDER_BOOK_ANOMALIES,
+        observing_saved_limit_anomalies_ratio: float = settings.OBSERVING_SAVED_LIMIT_ANOMALIES_RATIO,
     ):
         self._collector = collector
         self._discord_messenger = discord_messenger
-        self._detected_anomalies: Dict[AnomalyKey, OrderAnomalyDto] = {}
-        self._observing_anomalies: Dict[AnomalyKey, OrderAnomalyDto] = {}
+        self._detected_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
+        self._observing_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
+        self._observing_saved_limit_anomalies: Dict[
+            AnomalyKey, OrderBookAnomalyModel
+        ] = {}
         self._orders_anomaly_multiplier = Decimal(order_anomaly_multiplier)
         self._anomalies_detection_ttl = anomalies_detection_ttl
         self._anomalies_observing_ttl = anomalies_observing_ttl
@@ -81,6 +85,9 @@ class OrdersWorker(Worker):
             order_anomaly_minimum_liquidity
         )
         self._maximum_order_book_anomalies = maximum_order_book_anomalies + 1
+        self._observing_saved_limit_anomalies_ratio = Decimal(
+            observing_saved_limit_anomalies_ratio
+        )
 
     @set_interval(settings.ORDERS_WORKER_JOB_INTERVAL)
     async def run(self) -> None:
@@ -94,26 +101,90 @@ class OrdersWorker(Worker):
             f"Orders processing cycle started [symbol={self._collector.symbol}]"
         )
 
-        filtered_anomalies = await self.__get_filtered_anomalies()
+        order_book = self.__group_orders(
+            copy.deepcopy(self._collector.order_book),
+            self._collector.delimiter,
+        )
+
+        await self.__handle_anomalies(order_book)
+        await self.__handle_cancelled_anomalies(order_book)
+
+    def __group_orders(
+        self, order_book: OrderBookSnapshot, delimiter: Decimal
+    ) -> OrderBook:
+        return OrderBook(
+            a=self.group_order_book(order_book.asks, delimiter),
+            b=self.group_order_book(order_book.bids, delimiter),
+        )
+
+    async def __handle_anomalies(self, order_book: OrderBook) -> None:
+        with self._executor_factory() as executor:
+            filtered_anomalies = (
+                await asyncio.get_event_loop().run_in_executor(
+                    executor,
+                    self.__calculate_filtered_anomalies,
+                    order_book,
+                )
+            )
 
         if filtered_anomalies:
             save_anomalies = self.__save_anomalies(filtered_anomalies)
             send_anomalies = self.__send_anomalies(filtered_anomalies)
             await asyncio.gather(save_anomalies, send_anomalies)
 
-    async def __get_filtered_anomalies(self):
-        order_book = copy.deepcopy(self._collector.order_book)
-        delimiter = copy.deepcopy(self._collector.delimiter)
-
+    async def __handle_cancelled_anomalies(
+        self, order_book: OrderBook
+    ) -> None:
         with self._executor_factory() as executor:
-            result = await asyncio.get_event_loop().run_in_executor(
-                executor,
-                self.__calculate_filtered_anomalies,
-                order_book,
-                delimiter,
+            canceled_anomalies = (
+                await asyncio.get_event_loop().run_in_executor(
+                    executor,
+                    self.__calculate_canceled_anomalies,
+                    order_book,
+                )
             )
 
-        return result
+        if canceled_anomalies:
+            cancel_anomalies = self.__cancel_anomalies(canceled_anomalies)
+            send_anomalies = self.__send_canceled_anomalies(canceled_anomalies)
+            await asyncio.gather(cancel_anomalies, send_anomalies)
+
+    def __calculate_filtered_anomalies(self, order_book: OrderBook):
+        anomalies = self.__find_anomalies(order_book)
+        filtered_anomalies = self.__filter_anomalies(anomalies)
+        return filtered_anomalies
+
+    def __calculate_canceled_anomalies(
+        self, order_book: OrderBook
+    ) -> List[OrderBookAnomalyModel]:
+        cancelled_anomalies = []
+        saved_limit_anomalies = copy.deepcopy(
+            self._observing_saved_limit_anomalies
+        )
+        lowest_ask = min(order_book.a.keys())
+        highest_bid = max(order_book.b.keys())
+        for key, anomaly in saved_limit_anomalies.items():
+            order_book_side = (
+                order_book.a if key.type == "ask" else order_book.b
+            )
+            order_value = order_book_side.get(key.price)
+            if order_value is None:
+                self._observing_saved_limit_anomalies.pop(key, None)
+                if key.type == "ask":
+                    if key.price > lowest_ask:
+                        cancelled_anomalies.append(anomaly)
+                else:
+                    if key.price < highest_bid:
+                        cancelled_anomalies.append(anomaly)
+            else:
+                order_liquidity = key.price * order_value
+                deviation = (
+                    anomaly.order_liquidity - order_liquidity
+                ) / anomaly.order_liquidity
+                if deviation > self._observing_saved_limit_anomalies_ratio:
+                    self._observing_saved_limit_anomalies.pop(key, None)
+                    cancelled_anomalies.append(anomaly)
+        return cancelled_anomalies
 
     async def __save_anomalies(self, anomalies: List[OrderAnomaly]) -> None:
         order_book_anomalies = [
@@ -126,11 +197,17 @@ class OrdersWorker(Worker):
                 average_liquidity=anomaly.average_liquidity,
                 position=anomaly.position,
                 type=anomaly.type,
+                is_cancelled=(None if anomaly.position == 0 else False),
             )
             for anomaly in anomalies
         ]
         async with get_async_db() as session:
             await create_order_book_anomalies(session, order_book_anomalies)
+        for anomaly in order_book_anomalies:
+            if anomaly.position != 0:
+                self._observing_saved_limit_anomalies[
+                    AnomalyKey(anomaly.price, anomaly.type)
+                ] = anomaly
 
     async def __send_anomalies(self, anomalies: List[OrderAnomaly]) -> None:
         order_anomaly_notifications = [
@@ -144,25 +221,38 @@ class OrdersWorker(Worker):
             )
             for anomaly in anomalies
         ]
-        await self._discord_messenger.send_notifications(
-            order_anomaly_notifications,
-            self._collector.pair_id,
+        asyncio.create_task(
+            self._discord_messenger.send_anomaly_detection_notifications(
+                order_anomaly_notifications,
+                self._collector.pair_id,
+            )
         )
 
-    def __calculate_filtered_anomalies(
-        self, order_book: OrderBookSnapshot, delimiter: Decimal
-    ):
-        current_order_book = self.__group_orders(order_book, delimiter)
-        anomalies = self.__find_anomalies(current_order_book)
-        filtered_anomalies = self.__filter_anomalies(anomalies)
-        return filtered_anomalies
+    async def __cancel_anomalies(
+        self, anomalies_to_cancel: List[OrderBookAnomalyModel]
+    ) -> None:
+        async with get_async_db() as session:
+            await merge_and_cancel_anomalies(session, anomalies_to_cancel)
 
-    def __group_orders(
-        self, order_book: OrderBookSnapshot, delimiter: Decimal
-    ) -> OrderBook:
-        return OrderBook(
-            a=self.group_order_book(order_book.asks, delimiter),
-            b=self.group_order_book(order_book.bids, delimiter),
+    async def __send_canceled_anomalies(
+        self, canceled_anomalies: List[OrderAnomaly]
+    ) -> None:
+        order_anomaly_notifications = [
+            OrderAnomalyNotification(
+                price=anomaly.price,
+                quantity=anomaly.quantity,
+                order_liquidity=anomaly.order_liquidity,
+                average_liquidity=anomaly.average_liquidity,
+                type=anomaly.type,
+                position=anomaly.position,
+            )
+            for anomaly in canceled_anomalies
+        ]
+        asyncio.create_task(
+            self._discord_messenger.send_anomaly_cancellation_notifications(
+                order_anomaly_notifications,
+                self._collector.pair_id,
+            )
         )
 
     def __find_anomalies(self, order_book: OrderBook) -> List[OrderAnomaly]:
@@ -316,10 +406,11 @@ class OrdersWorker(Worker):
         if self.__handle_any_position_anomaly(
             anomaly=anomaly, anomaly_key=anomaly_key
         ):
-            self._detected_anomalies[anomaly_key] = OrderAnomalyDto(
+            self._detected_anomalies[anomaly_key] = OrderAnomalyInTime(
                 time=current_time, order_anomaly=anomaly
             )
             self._observing_anomalies.pop(anomaly_key, None)
+            self._observing_saved_limit_anomalies.pop(anomaly_key, None)
             return True
 
         return False
@@ -357,7 +448,7 @@ class OrdersWorker(Worker):
         if self.__handle_any_position_anomaly(
             anomaly=anomaly, anomaly_key=anomaly_key
         ):
-            order_anomaly: OrderAnomalyDto = OrderAnomalyDto(
+            order_anomaly: OrderAnomalyInTime = OrderAnomalyInTime(
                 order_anomaly=anomaly, time=current_time
             )
 
@@ -377,7 +468,7 @@ class OrdersWorker(Worker):
 
     def __remove_expired_anomaly_keys(
         self,
-        anomalies_dict: Dict[AnomalyKey, OrderAnomalyDto],
+        anomalies_dict: Dict[AnomalyKey, OrderAnomalyInTime],
         current_time: float,
     ) -> None:
         keys_to_remove = [

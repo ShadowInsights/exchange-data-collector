@@ -29,3 +29,4 @@ class OrderBookAnomalyModel(BaseModel):
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     type: Mapped[Literal["ask", "bid"]] = mapped_column(nullable=False)
+    is_cancelled: Mapped[bool] = mapped_column(nullable=True)

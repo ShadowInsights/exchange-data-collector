@@ -9,3 +9,12 @@ async def create_order_book_anomalies(
 ) -> list[OrderBookAnomalyModel]:
     session.add_all(order_book_anomalies)
     return order_book_anomalies
+
+
+async def merge_and_cancel_anomalies(
+    session: AsyncSession, anomalies_to_cancel: list[OrderBookAnomalyModel]
+):
+    for anomaly in anomalies_to_cancel:
+        merged_anomaly = await session.merge(anomaly)
+        merged_anomaly.is_cancelled = True
+    await session.commit()

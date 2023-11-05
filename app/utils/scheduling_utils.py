@@ -1,16 +1,26 @@
 import asyncio
 import logging
+from typing import Any, Callable, Coroutine
 
 
-def set_interval(seconds) -> callable:
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
+def set_interval(
+    seconds: float,
+) -> Callable[
+    [Callable[..., Coroutine[Any, Any, None]]],
+    Callable[..., Coroutine[Any, Any, None]],
+]:
+    def decorator(
+        func: Callable[..., Coroutine[Any, Any, None]]
+    ) -> Callable[..., Coroutine[Any, Any, None]]:
+        async def wrapper(*args: Any, **kwargs: Any) -> None:
             while True:
                 try:
                     await asyncio.sleep(seconds)
-                    asyncio.create_task(func(*args, **kwargs))
+                    await func(*args, **kwargs)
                 except Exception as e:
-                    logging.exception(e)
+                    logging.exception(
+                        "An error occurred in the periodic task.", exc_info=e
+                    )
 
         return wrapper
 
