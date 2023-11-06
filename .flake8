@@ -1,5 +1,5 @@
 [flake8]
-max-line-length = 120
+max-line-length = 125
 application-import-names = app
 exclude = alembic/*
 extend-ignore = E203

@@ -5,33 +5,35 @@ import regex
 DECIMAL_ROUND_REGEX = regex.compile(r"(\.\d*?[1-9])0+$|\.0+$")
 
 
-def add_comma_every_n_symbols(
-    input: [int, float, str, Decimal], n: int = 3
-) -> str:
-    if n <= 0:
-        return str(input)
+def add_comma_every_n_symbols(input_value, n=3) -> str:
+    # Ensure the input is a string
+    input_str = str(input_value).strip()
 
-    input_str = str(input)
+    # Split into integer and decimal parts
     if "." in input_str:
         int_part, decimal_part = input_str.split(".")
     else:
-        int_part = input_str
-        decimal_part = None
+        int_part, decimal_part = input_str, None
 
-    result = []
-    reversed_int = int_part[::-1]
+    # Remove any non-digit characters (like spaces or negative signs) from the integer part
+    sign = ""
+    if int_part and (int_part[0] == "-" or int_part[0] == "+"):
+        sign = int_part[0]  # Save the sign
+        int_part = int_part[1:]  # Remove the sign from the integer part
 
-    for i, char in enumerate(reversed_int):
-        if i > 0 and i % n == 0:
-            result.append(",")
-        result.append(char)
+    # Add commas
+    reversed_int_part = int_part[::-1]
+    commas_added = [
+        reversed_int_part[i : i + n]
+        for i in range(0, len(reversed_int_part), n)
+    ]
+    int_with_commas = sign + ",".join(commas_added)[::-1]
 
-    result.reverse()
-
-    if decimal_part:
-        return "".join(result) + "." + decimal_part
+    # Combine integer and decimal parts
+    if decimal_part is not None:
+        return f"{int_with_commas}.{decimal_part}"
     else:
-        return "".join(result)
+        return int_with_commas
 
 
 def round_decimal_to_first_non_zero(num: Decimal) -> Decimal:

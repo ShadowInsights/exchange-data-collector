@@ -1,12 +1,19 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import Awaitable
+from typing import Any, Callable, Coroutine
 
 
-def set_interval(interval_time: int):
-    def decorator(func: Awaitable):
-        async def wrapper(*args, **kwargs):
+def set_interval(
+    seconds: float,
+) -> Callable[
+    [Callable[..., Coroutine[Any, Any, None]]],
+    Callable[..., Coroutine[Any, Any, None]],
+]:
+    def decorator(
+        func: Callable[..., Coroutine[Any, Any, None]]
+    ) -> Callable[..., Coroutine[Any, Any, None]]:
+        async def wrapper(*args: Any, **kwargs: Any) -> None:
             while True:
 
                 callback_event = asyncio.Event()
@@ -19,16 +26,17 @@ def set_interval(interval_time: int):
 
                 await callback_event.wait()
 
-                # Calculate the elapsed time
+                
                 time_spent = (datetime.now() - start_time).total_seconds()
 
                 await task
                 callback_event.clear()
-                # Sleep the remaining time of the interval, if necessary
+                
                 if time_spent < interval_time:
                     await asyncio.sleep(interval_time - time_spent)
                 else:
                     logging.warn(f"Active work took longer than the interval time: {time_spent} seconds")
+
 
         return wrapper
 
