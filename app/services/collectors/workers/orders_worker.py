@@ -486,9 +486,7 @@ class OrdersWorker(Worker):
     ) -> Dict[Decimal, Decimal]:
         reverse = order_type == "bid"
         return dict(
-            sorted(orders.items(), key=lambda item: item[0], reverse=reverse)[
-            : self._top_n_orders
-            ]
+            sorted(orders.items(), key=lambda item: item[0], reverse=reverse)[:self._top_n_orders]
         )
 
     def __is_volume_significantly_increased(
