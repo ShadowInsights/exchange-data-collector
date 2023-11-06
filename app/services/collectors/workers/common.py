@@ -8,17 +8,17 @@ from app.utils.time_utils import is_current_time_inside_trading_sessions
 
 
 class Worker(ABC):
-    async def run(self) -> None:
+    async def run(self, *args, **kwargs) -> None:
         if (
             settings.IS_TRADING_SESSION_VERIFICATION_REQUIRED
             and not is_current_time_inside_trading_sessions(trading_sessions)
         ):
             return
         else:
-            await self._run_worker()
+            await self._run_worker(*args, **kwargs)
 
     @abstractmethod
-    def _run_worker(self) -> None:
+    def _run_worker(self, *args, **kwargs) -> None:
         pass
 
     @staticmethod

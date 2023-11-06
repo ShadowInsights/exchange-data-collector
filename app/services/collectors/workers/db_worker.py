@@ -26,18 +26,13 @@ class DbWorker(Worker):
         self._stamp_id = 0
 
     @set_interval(settings.DB_WORKER_JOB_INTERVAL)
-    async def run(self) -> None:
-        await super().run()
+    async def run(self, *args, **kwargs) -> None:
+        await super().run(*args, **kwargs)
 
-    async def _run_worker(self) -> None:
-        asyncio.create_task(self.__db_worker())
+    async def _run_worker(self, *args, **kwargs) -> None:
+        asyncio.create_task(self.__db_worker(*args, **kwargs))
 
-    async def __db_worker(self) -> None:
-        start_time = datetime.now()
-        logging.debug(
-            f"Worker function cycle started [symbol={self._collector.symbol}]"
-        )
-
+    async def __db_worker(self, *args, **kwargs) -> None:
         collector_current_order_book = copy.deepcopy(
             self._collector.order_book
         )
@@ -49,6 +44,10 @@ class DbWorker(Worker):
                 collector_current_order_book.bids, self._collector.delimiter
             ),
         )
+
+        callback_event = kwargs.get('callback_event')
+        callback_event.set()
+
         try:
             async with get_async_db() as session:
                 await create_order_book(
@@ -66,22 +65,6 @@ class DbWorker(Worker):
             self.__log_order_book(order_book.b, order_book.a)
         except Exception as e:
             logging.error(f"Error: {e} [symbol={self._collector.symbol}]")
-
-        # Calculate the time spent
-        time_spent = datetime.now() - start_time
-        time_spent = time_spent.total_seconds()
-        logging.debug(
-            f"Worker function took {time_spent} seconds [symbol={self._collector.symbol}]"
-        )
-
-        # If the work takes less than 1 seconds, sleep for the remainder
-        if time_spent < 1:
-            await asyncio.sleep(1 - time_spent)
-        # If it takes more, log and start again immediately
-        else:
-            logging.warn(
-                f"Worker function took longer than 1 seconds: {time_spent} seconds [symbol={self._collector.symbol}]"
-            )
 
     def __log_order_book(self, grouped_bids, grouped_asks) -> None:
         # Convert keys and values to string before dumping to json

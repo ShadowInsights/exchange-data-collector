@@ -29,9 +29,11 @@ class Maestro:
         await self._start_collectors(maestro_id, pairs)
 
     @set_interval(settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL)
-    async def _liveness_updater_loop(self, maestro_id: UUID) -> None:
+    async def _liveness_updater_loop(self, maestro_id: UUID, *args, **kwargs) -> None:
         async with get_async_db() as db:
             await update_maestro_liveness_time(db, maestro_id)
+        callback_event = kwargs.get('callback_event')
+        callback_event.set()
 
     async def _create_maestro(self) -> UUID:
         async with get_async_db() as db:
@@ -40,7 +42,7 @@ class Maestro:
         return maestro_model.id
 
     async def _retrieve_and_assign_pairs(
-        self, maestro_id: UUID
+            self, maestro_id: UUID
     ) -> list[PairModel]:
         while True:
             try:
@@ -61,7 +63,7 @@ class Maestro:
                 logging.exception(f"Error while retrieving pairs: {e}")
 
     async def _start_collectors(
-        self, maestro_id: UUID, pairs: list[PairModel]
+            self, maestro_id: UUID, pairs: list[PairModel]
     ) -> None:
         logging.info("Filling missed liquidity intervals")
         await fill_missed_liquidity_intervals(maestro_id)

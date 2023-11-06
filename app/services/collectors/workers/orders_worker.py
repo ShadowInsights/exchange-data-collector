@@ -74,10 +74,12 @@ class OrdersWorker(Worker):
         )
 
     @set_interval(settings.ORDERS_WORKER_JOB_INTERVAL)
-    async def run(self) -> None:
+    async def run(self, *args, **kwargs) -> None:
         await super().run()
+        callback_event = kwargs.get('callback_event')
+        callback_event.set()
 
-    async def _run_worker(self) -> None:
+    async def _run_worker(self, callback_event=None) -> None:
         await self.__process_orders()
 
     async def __process_orders(self) -> None:
