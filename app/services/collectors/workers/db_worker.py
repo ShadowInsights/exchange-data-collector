@@ -26,13 +26,13 @@ class DbWorker(Worker):
         self._stamp_id = 0
 
     @set_interval(settings.DB_WORKER_JOB_INTERVAL)
-    async def run(self, *args, **kwargs) -> None:
-        await super().run(*args, **kwargs)
+    async def run(self, callback_event: asyncio.Event) -> None:
+        await super().run(callback_event)
 
-    async def _run_worker(self, *args, **kwargs) -> None:
-        asyncio.create_task(self.__db_worker(*args, **kwargs))
+    async def _run_worker(self, callback_event: asyncio.Event = None) -> None:
+        asyncio.create_task(self.__db_worker(callback_event))
 
-    async def __db_worker(self, *args, **kwargs) -> None:
+    async def __db_worker(self, callback_event: asyncio.Event = None) -> None:
         collector_current_order_book = copy.deepcopy(
             self._collector.order_book
         )
@@ -45,7 +45,6 @@ class DbWorker(Worker):
             ),
         )
 
-        callback_event = kwargs.get('callback_event')
         callback_event.set()
 
         try:

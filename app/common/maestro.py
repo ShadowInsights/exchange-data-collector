@@ -29,10 +29,9 @@ class Maestro:
         await self._start_collectors(maestro_id, pairs)
 
     @set_interval(settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL)
-    async def _liveness_updater_loop(self, maestro_id: UUID, *args, **kwargs) -> None:
+    async def _liveness_updater_loop(self, maestro_id: UUID, callback_event: asyncio.Event = None) -> None:
         async with get_async_db() as db:
             await update_maestro_liveness_time(db, maestro_id)
-        callback_event = kwargs.get('callback_event')
         callback_event.set()
 
     async def _create_maestro(self) -> UUID:

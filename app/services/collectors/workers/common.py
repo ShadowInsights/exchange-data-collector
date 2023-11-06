@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from typing import Dict
@@ -8,17 +9,17 @@ from app.utils.time_utils import is_current_time_inside_trading_sessions
 
 
 class Worker(ABC):
-    async def run(self, *args, **kwargs) -> None:
+    async def run(self, callback_event: asyncio.Event = None) -> None:
         if (
             settings.IS_TRADING_SESSION_VERIFICATION_REQUIRED
             and not is_current_time_inside_trading_sessions(trading_sessions)
         ):
             return
         else:
-            await self._run_worker(*args, **kwargs)
+            await self._run_worker(callback_event)
 
     @abstractmethod
-    def _run_worker(self, *args, **kwargs) -> None:
+    def _run_worker(self, callback_event: asyncio.Event = None) -> None:
         pass
 
     @staticmethod

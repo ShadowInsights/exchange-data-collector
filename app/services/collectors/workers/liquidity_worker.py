@@ -35,12 +35,11 @@ class LiquidityWorker(Worker):
         )
 
     @set_interval(settings.LIQUIDITY_WORKER_JOB_INTERVAL)
-    async def run(self, *args, **kwargs) -> None:
-        await super().run()
-        callback_event = kwargs.get('callback_event')
+    async def run(self, callback_event: asyncio.Event = None) -> None:
+        await super().run(callback_event)
         callback_event.set()
 
-    async def _run_worker(self, *args, **kwargs) -> None:
+    async def _run_worker(self, callback_event: asyncio.Event = None) -> None:
         logging.debug("Saving liquidity record")
 
         average_volume = copy.deepcopy(self._collector.avg_volume)
