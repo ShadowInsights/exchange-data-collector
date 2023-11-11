@@ -8,12 +8,10 @@ class Counter:
     def __init__(self):
         self.counter = 0
 
-    @SetInterval(1)
+    @SetInterval(10)
     async def func(self, callback_event: asyncio.Event = None):
-        print("call function")
         self.counter += 1
         callback_event.set()
-        print("callback")
 
 
 @patch(
@@ -30,9 +28,11 @@ async def test_is_fast_executed_function_invoked_n_times_in_specified_interval(
 ):
     expected_call_counts = 2
     expected_call = [False] * expected_call_counts + [True]
+    sequence_response = [0, 7]
     mock_get_is_interrupted.side_effect = expected_call
-    big_sequence_response = [0, 0.5] * expected_call_counts
-    mock_get_current_time.side_effect = big_sequence_response
+    mock_get_current_time.side_effect = (
+        sequence_response * expected_call_counts
+    )
     counter_obj = Counter()
     await counter_obj.func()
 
@@ -53,9 +53,11 @@ async def test_is_long_executed_function_invoked_n_times_in_specified_interval(
 ):
     expected_call_counts = 1
     expected_call = [False] * expected_call_counts + [True]
+    sequence_response = [0, 23]
     mock_get_is_interrupted.side_effect = expected_call
-    big_sequence_response = [0, 2] * expected_call_counts
-    mock_get_current_time.side_effect = big_sequence_response
+    mock_get_current_time.side_effect = (
+        sequence_response * expected_call_counts
+    )
     counter_obj = Counter()
     await counter_obj.func()
 
