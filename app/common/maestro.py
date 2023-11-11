@@ -14,7 +14,7 @@ from app.services.collectors.binance_exchange_collector import \
     BinanceExchangeCollector
 from app.services.starters.liquidity_starters import \
     fill_missed_liquidity_intervals
-from app.utils.scheduling_utils import set_interval
+from app.utils.scheduling_utils import SetInterval
 
 
 class Maestro:
@@ -28,11 +28,14 @@ class Maestro:
         pairs = await self._retrieve_and_assign_pairs(maestro_id)
         await self._start_collectors(maestro_id, pairs)
 
-    @set_interval(settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL)
-    async def _liveness_updater_loop(self, maestro_id: UUID, callback_event: asyncio.Event = None) -> None:
+    @SetInterval(settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL)
+    async def _liveness_updater_loop(
+        self, maestro_id: UUID, callback_event: asyncio.Event = None
+    ) -> None:
         async with get_async_db() as db:
             await update_maestro_liveness_time(db, maestro_id)
-        callback_event.set()
+        if callback_event:
+            callback_event.set()
 
     async def _create_maestro(self) -> UUID:
         async with get_async_db() as db:
@@ -41,7 +44,7 @@ class Maestro:
         return maestro_model.id
 
     async def _retrieve_and_assign_pairs(
-            self, maestro_id: UUID
+        self, maestro_id: UUID
     ) -> list[PairModel]:
         while True:
             try:
@@ -62,7 +65,7 @@ class Maestro:
                 logging.exception(f"Error while retrieving pairs: {e}")
 
     async def _start_collectors(
-            self, maestro_id: UUID, pairs: list[PairModel]
+        self, maestro_id: UUID, pairs: list[PairModel]
     ) -> None:
         logging.info("Filling missed liquidity intervals")
         await fill_missed_liquidity_intervals(maestro_id)

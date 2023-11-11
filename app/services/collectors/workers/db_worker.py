@@ -9,7 +9,7 @@ from app.common.database import get_async_db
 from app.db.repositories.order_book_repository import create_order_book
 from app.services.collectors.common import Collector, OrderBook
 from app.services.collectors.workers.common import Worker
-from app.utils.scheduling_utils import set_interval
+from app.utils.scheduling_utils import SetInterval
 
 
 def handle_decimal_type(obj) -> str:
@@ -24,9 +24,11 @@ class DbWorker(Worker):
         self._collector = collector
         self._stamp_id = 0
 
-    @set_interval(settings.DB_WORKER_JOB_INTERVAL)
+    @SetInterval(settings.DB_WORKER_JOB_INTERVAL)
     async def run(self, callback_event: asyncio.Event) -> None:
         await super().run(callback_event)
+        if callback_event:
+            callback_event.set()
 
     async def _run_worker(self, callback_event: asyncio.Event = None) -> None:
         asyncio.create_task(self.__db_worker(callback_event))
@@ -43,8 +45,6 @@ class DbWorker(Worker):
                 collector_current_order_book.bids, self._collector.delimiter
             ),
         )
-
-        callback_event.set()
 
         try:
             async with get_async_db() as session:

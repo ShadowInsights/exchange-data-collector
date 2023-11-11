@@ -1,19 +1,21 @@
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock, patch
 from uuid import UUID
+
 import pytest
+
 from app.services.collectors.common import Collector
 from app.services.collectors.workers.liquidity_worker import LiquidityWorker
 
 
 class MockCollector(Collector):
     def __init__(
-            self,
-            launch_id: UUID,
-            pair_id: UUID,
-            exchange_id: UUID,
-            symbol: str,
-            delimiter: Decimal,
+        self,
+        launch_id: UUID,
+        pair_id: UUID,
+        exchange_id: UUID,
+        symbol: str,
+        delimiter: Decimal,
     ):
         super().__init__(launch_id, pair_id, exchange_id, symbol, delimiter)
 
@@ -44,10 +46,10 @@ def collector() -> Collector:
     new_callable=AsyncMock,
 )
 async def test_non_anomaly_anomaly(
-        mock_save_liquidity: AsyncMock,
-        mock_find_last_average_volumes: Mock,
-        mock_liquidity_discord_messenger: AsyncMock,
-        collector: Collector,
+    mock_save_liquidity: AsyncMock,
+    mock_find_last_average_volumes: Mock,
+    mock_liquidity_discord_messenger: AsyncMock,
+    collector: Collector,
 ) -> None:
     mock_find_last_average_volumes.return_value = [32, 16, 23231, 11, 0]
 
@@ -80,10 +82,10 @@ async def test_non_anomaly_anomaly(
     new_callable=AsyncMock,
 )
 async def test_inflow_anomaly_detection(
-        mock_save_liquidity: AsyncMock,
-        mock_find_last_average_volumes: Mock,
-        mock_liquidity_discord_messenger: AsyncMock,
-        collector: Collector,
+    mock_save_liquidity: AsyncMock,
+    mock_find_last_average_volumes: Mock,
+    mock_liquidity_discord_messenger: AsyncMock,
+    collector: Collector,
 ) -> None:
     mock_find_last_average_volumes.return_value = [10, 20, 30]
 
@@ -133,10 +135,10 @@ async def test_inflow_anomaly_detection(
     new_callable=AsyncMock,
 )
 async def test_outflow_anomaly_detection(
-        mock_save_liquidity: AsyncMock,
-        mock_find_last_average_volumes: Mock,
-        mock_liquidity_discord_messenger: AsyncMock,
-        collector: Collector,
+    mock_save_liquidity: AsyncMock,
+    mock_find_last_average_volumes: Mock,
+    mock_liquidity_discord_messenger: AsyncMock,
+    collector: Collector,
 ) -> None:
     mock_find_last_average_volumes.return_value = [125827, 315291, 723125]
 
@@ -186,10 +188,10 @@ async def test_outflow_anomaly_detection(
     new_callable=AsyncMock,
 )
 async def test_not_enough_last_average_volumes_and_filling_this_array_with_latest_volume(
-        mock_save_liquidity: AsyncMock,
-        mock_find_last_average_volumes: Mock,
-        mock_liquidity_discord_messenger: AsyncMock,
-        collector: Collector,
+    mock_save_liquidity: AsyncMock,
+    mock_find_last_average_volumes: Mock,
+    mock_liquidity_discord_messenger: AsyncMock,
+    collector: Collector,
 ) -> None:
     mock_find_last_average_volumes.return_value = [10]
 
@@ -222,10 +224,10 @@ async def test_not_enough_last_average_volumes_and_filling_this_array_with_lates
     new_callable=AsyncMock,
 )
 async def test_saving_liquidity_record(
-        mock_save_liquidity: AsyncMock,
-        mock_find_last_average_volumes: Mock,
-        mock_liquidity_discord_messenger: AsyncMock,
-        collector: Collector,
+    mock_save_liquidity: AsyncMock,
+    mock_find_last_average_volumes: Mock,
+    mock_liquidity_discord_messenger: AsyncMock,
+    collector: Collector,
 ) -> None:
     mock_find_last_average_volumes.return_value = [125827, 315291, 723125]
 
@@ -269,10 +271,10 @@ async def test_saving_liquidity_record(
     new_callable=AsyncMock,
 )
 async def test_non_anomaly_anomaly_not_send_notification(
-        mock_save_liquidity: AsyncMock,
-        mock_find_last_average_volumes: Mock,
-        mock_liquidity_discord_messenger: AsyncMock,
-        collector: Collector,
+    mock_save_liquidity: AsyncMock,
+    mock_find_last_average_volumes: Mock,
+    mock_liquidity_discord_messenger: AsyncMock,
+    collector: Collector,
 ) -> None:
     mock_find_last_average_volumes.return_value = [32, 16, 23231, 11, 0]
 
@@ -300,10 +302,10 @@ async def test_non_anomaly_anomaly_not_send_notification(
     new_callable=AsyncMock,
 )
 async def test_anomaly_anomaly_send_notification(
-        mock_save_liquidity: AsyncMock,
-        mock_find_last_average_volumes: Mock,
-        mock_liquidity_discord_messenger: AsyncMock,
-        collector: Collector,
+    mock_save_liquidity: AsyncMock,
+    mock_find_last_average_volumes: Mock,
+    mock_liquidity_discord_messenger: AsyncMock,
+    collector: Collector,
 ) -> None:
     mock_find_last_average_volumes.return_value = [100, 200, 300]
 

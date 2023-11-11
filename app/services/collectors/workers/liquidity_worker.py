@@ -12,7 +12,7 @@ from app.services.collectors.workers.common import Worker
 from app.services.messengers.liquidity_discord_messenger import \
     LiquidityDiscordMessenger
 from app.utils.math_utils import calculate_round_avg
-from app.utils.scheduling_utils import set_interval
+from app.utils.scheduling_utils import SetInterval
 
 
 class LiquidityWorker(Worker):
@@ -34,10 +34,11 @@ class LiquidityWorker(Worker):
             executor_factory or concurrent.futures.ThreadPoolExecutor
         )
 
-    @set_interval(settings.LIQUIDITY_WORKER_JOB_INTERVAL)
+    @SetInterval(settings.LIQUIDITY_WORKER_JOB_INTERVAL)
     async def run(self, callback_event: asyncio.Event = None) -> None:
         await super().run(callback_event)
-        callback_event.set()
+        if callback_event:
+            callback_event.set()
 
     async def _run_worker(self, callback_event: asyncio.Event = None) -> None:
         logging.debug("Saving liquidity record")
