@@ -1962,8 +1962,12 @@ async def test_non_first_anomaly_canceled(
     )
     assert mock_merge_and_cancel_anomalies.call_count == 1
 
-    mock_send_anomaly_notifications = mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
-    order_anomaly_cancellation_call = mock_send_anomaly_notifications.call_args_list[0]
+    mock_send_anomaly_notifications = (
+        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
+    )
+    order_anomaly_cancellation_call = (
+        mock_send_anomaly_notifications.call_args_list[0]
+    )
 
     order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
@@ -2078,8 +2082,12 @@ async def test_valid_anomaly_canceled(
     )
     assert mock_merge_and_cancel_anomalies.call_count == 1
 
-    mock_send_anomaly_notifications = mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
-    order_anomaly_cancellation_call = mock_send_anomaly_notifications.call_args_list[0]
+    mock_send_anomaly_notifications = (
+        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
+    )
+    order_anomaly_cancellation_call = (
+        mock_send_anomaly_notifications.call_args_list[0]
+    )
 
     order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
@@ -2188,8 +2196,12 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     )
     assert mock_merge_and_cancel_anomalies.call_count == 1
 
-    mock_send_anomaly_notifications = mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
-    order_anomaly_cancellation_call = mock_send_anomaly_notifications.call_args_list[0]
+    mock_send_anomaly_notifications = (
+        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
+    )
+    order_anomaly_cancellation_call = (
+        mock_send_anomaly_notifications.call_args_list[0]
+    )
 
     order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
@@ -2289,8 +2301,12 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
     )
     assert mock_merge_and_cancel_anomalies.call_count == 1
 
-    mock_send_anomaly_notifications = mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
-    order_anomaly_cancellation_call = mock_send_anomaly_notifications.call_args_list[0]
+    mock_send_anomaly_notifications = (
+        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
+    )
+    order_anomaly_cancellation_call = (
+        mock_send_anomaly_notifications.call_args_list[0]
+    )
     order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
         OrderAnomalyNotification(
