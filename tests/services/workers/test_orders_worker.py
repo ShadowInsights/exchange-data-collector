@@ -2189,7 +2189,6 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     )
     assert mock_merge_and_cancel_anomalies.call_count == 1
 
-
     send_anomaly_notifications_mock = (
         mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
     )

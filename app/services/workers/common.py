@@ -19,10 +19,8 @@ trading_sessions = [
 
 
 class Worker(ABC):
-
     def __init__(self, processor: Processor):
         self._processor = processor
-
 
     async def run(self, callback_event: asyncio.Event = None) -> None:
         if (
@@ -35,7 +33,6 @@ class Worker(ABC):
 
     @abstractmethod
     def _run_worker(self, callback_event: asyncio.Event = None) -> None:
-
         pass
 
     @staticmethod

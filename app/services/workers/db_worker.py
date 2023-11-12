@@ -3,7 +3,6 @@ import copy
 import json
 import logging
 from dataclasses import asdict, dataclass
-from datetime import datetime
 
 from _decimal import Decimal
 
@@ -14,7 +13,6 @@ from app.db.repositories.order_book_repository import create_order_book
 from app.services.collectors.clients.schemas.common import OrderBook
 from app.services.workers.common import Worker
 from app.utils.scheduling_utils import SetInterval
-
 
 
 @dataclass

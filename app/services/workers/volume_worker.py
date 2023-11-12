@@ -16,7 +16,7 @@ from app.services.messengers.volume_discord_messenger import \
 from app.services.workers.common import Worker
 from app.utils.event_utils import EventHandler
 from app.utils.math_utils import calculate_avg_by_summary, calculate_round_avg
-from app.utils.scheduling_utils import set_interval
+from app.utils.scheduling_utils import SetInterval
 
 
 class VolumeWorker(Worker):
@@ -44,11 +44,11 @@ class VolumeWorker(Worker):
             EventTypeEnum.UPDATE.value, self.__update_summary_volume
         )
 
-    @set_interval(settings.VOLUME_WORKER_JOB_INTERVAL)
-    async def run(self) -> None:
-        await super().run()
+    @SetInterval(settings.VOLUME_WORKER_JOB_INTERVAL)
+    async def run(self, callback_event: asyncio.Event = None) -> None:
+        await super().run(callback_event)
 
-    async def _run_worker(self) -> None:
+    async def _run_worker(self, callback_event: asyncio.Event = None) -> None:
         logging.debug("Saving liquidity record")
 
         last_avg_volumes = copy.deepcopy(self._last_average_volumes)
