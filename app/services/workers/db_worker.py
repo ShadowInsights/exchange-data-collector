@@ -2,15 +2,24 @@ import asyncio
 import copy
 import json
 import logging
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from decimal import Decimal
+
+from _decimal import Decimal
 
 from app.common.config import settings
 from app.common.database import get_async_db
+from app.common.processor import Processor
 from app.db.repositories.order_book_repository import create_order_book
-from app.services.collectors.common import Collector, OrderBook
-from app.services.collectors.workers.common import Worker
+from app.services.collectors.clients.schemas.common import OrderBook
+from app.services.workers.common import Worker
 from app.utils.scheduling_utils import set_interval
+
+
+@dataclass
+class OrderBookJson:
+    a: dict[str, str]
+    b: dict[str, str]
 
 
 def handle_decimal_type(obj) -> str:
@@ -20,9 +29,8 @@ def handle_decimal_type(obj) -> str:
 
 
 class DbWorker(Worker):
-    # TODO: Create a base class for all collectors
-    def __init__(self, collector: Collector):
-        self._collector = collector
+    def __init__(self, processor: Processor):
+        super().__init__(processor)
         self._stamp_id = 0
 
     @set_interval(settings.DB_WORKER_JOB_INTERVAL)
@@ -35,43 +43,45 @@ class DbWorker(Worker):
     async def __db_worker(self) -> None:
         start_time = datetime.now()
         logging.debug(
-            f"Worker function cycle started [symbol={self._collector.symbol}]"
+            f"Worker function cycle started [symbol={self._processor.symbol}]"
         )
 
         collector_current_order_book = copy.deepcopy(
-            self._collector.order_book
+            self._processor.order_book
         )
         order_book = OrderBook(
             a=self.group_order_book(
-                collector_current_order_book.asks, self._collector.delimiter
+                collector_current_order_book.a, self._processor.delimiter
             ),
             b=self.group_order_book(
-                collector_current_order_book.bids, self._collector.delimiter
+                collector_current_order_book.b, self._processor.delimiter
             ),
         )
+        order_book_json = self.__convert_to_json(order_book)
+
         try:
             async with get_async_db() as session:
                 await create_order_book(
                     session,
-                    self._collector.launch_id,
+                    self._processor.launch_id,
                     self._stamp_id,
-                    self._collector.pair_id,
-                    order_book=order_book.model_dump_json(),
+                    self._processor.pair_id,
+                    order_book=order_book_json,
                 )
 
             # Increment the stamp_id
             self._stamp_id += 1
 
             # Log the order book
-            self.__log_order_book(order_book.b, order_book.a)
+            self.__log_order_book(order_book_json)
         except Exception as e:
-            logging.error(f"Error: {e} [symbol={self._collector.symbol}]")
+            logging.error(f"Error: {e} [symbol={self._processor.symbol}]")
 
         # Calculate the time spent
         time_spent = datetime.now() - start_time
         time_spent = time_spent.total_seconds()
         logging.debug(
-            f"Worker function took {time_spent} seconds [symbol={self._collector.symbol}]"
+            f"Worker function took {time_spent} seconds [symbol={self._processor.symbol}]"
         )
 
         # If the work takes less than 1 seconds, sleep for the remainder
@@ -80,23 +90,22 @@ class DbWorker(Worker):
         # If it takes more, log and start again immediately
         else:
             logging.warn(
-                f"Worker function took longer than 1 seconds: {time_spent} seconds [symbol={self._collector.symbol}]"
+                f"Worker function took longer than 1 seconds: {time_spent} seconds [symbol={self._processor.symbol}]"
             )
 
-    def __log_order_book(self, grouped_bids, grouped_asks) -> None:
-        # Convert keys and values to string before dumping to json
-        grouped_bids = {
-            handle_decimal_type(k): handle_decimal_type(v)
-            for k, v in grouped_bids.items()
+    def __convert_to_json(self, order_book: OrderBook) -> str:
+        asks = {
+            handle_decimal_type(ask[0]): handle_decimal_type(ask[1])
+            for ask in order_book.a.items()
         }
-        grouped_asks = {
-            handle_decimal_type(k): handle_decimal_type(v)
-            for k, v in grouped_asks.items()
+        bids = {
+            handle_decimal_type(bid[0]): handle_decimal_type(bid[1])
+            for bid in order_book.b.items()
         }
 
-        order_book_json = json.dumps(
-            {"asks": grouped_bids, "bids": grouped_asks}
-        )
+        return json.dumps(asdict(OrderBookJson(a=asks, b=bids)))
+
+    def __log_order_book(self, order_book_json: str) -> None:
         logging.debug(
-            f"Saved grouped order book: {order_book_json} [symbol={self._collector.symbol}]"
+            f"Saved grouped order book: {order_book_json} [symbol={self._processor.symbol}]"
         )

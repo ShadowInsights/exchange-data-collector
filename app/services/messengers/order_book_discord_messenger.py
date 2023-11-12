@@ -11,9 +11,11 @@ from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.pair_repository import find_pair_by_id
 from app.services.messengers.common import BaseMessage, Field
 from app.services.messengers.discord_messenger import DiscordMessenger
-from app.utils.string_utils import (add_comma_every_n_symbols,
-                                    round_decimal_to_first_non_zero,
-                                    to_title_case)
+from app.utils.string_utils import (
+    add_comma_every_n_symbols,
+    round_decimal_to_first_non_zero,
+    to_title_case,
+)
 
 
 class OrderAnomalyNotification(NamedTuple):

@@ -1,6 +1,6 @@
-from decimal import Decimal
 from uuid import UUID
 
+from _decimal import Decimal
 from sqlalchemy import DECIMAL, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as pg_UUID
 from sqlalchemy.orm import Mapped, mapped_column

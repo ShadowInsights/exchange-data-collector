@@ -1,13 +1,28 @@
 from abc import ABC, abstractmethod
-from decimal import Decimal
 from typing import Dict
 
+from _decimal import Decimal
+
 from app.common.config import settings
-from app.services.collectors.common import trading_sessions
-from app.utils.time_utils import is_current_time_inside_trading_sessions
+from app.common.processor import Processor
+from app.utils.time_utils import (
+    LONDON_TRADING_SESSION,
+    NEW_YORK_TRADING_SESSION,
+    TOKYO_TRADING_SESSION,
+    is_current_time_inside_trading_sessions,
+)
+
+trading_sessions = [
+    TOKYO_TRADING_SESSION,
+    LONDON_TRADING_SESSION,
+    NEW_YORK_TRADING_SESSION,
+]
 
 
 class Worker(ABC):
+    def __init__(self, processor: Processor):
+        self._processor = processor
+
     async def run(self) -> None:
         if (
             settings.IS_TRADING_SESSION_VERIFICATION_REQUIRED
@@ -18,18 +33,15 @@ class Worker(ABC):
             await self._run_worker()
 
     @abstractmethod
-    def _run_worker(self) -> None:
+    async def _run_worker(self) -> None:
         pass
 
     @staticmethod
     def group_order_book(
-        order_book: Dict[str, str], delimiter: Decimal
+        order_book: Dict[Decimal, Decimal], delimiter: Decimal
     ) -> Dict[Decimal, Decimal]:
         grouped_order_book = {}
         for price, quantity in order_book.items():
-            price = Decimal(price)
-            quantity = Decimal(quantity)
-
             # Calculate bucketed price
             bucketed_price = price - (price % delimiter)
 

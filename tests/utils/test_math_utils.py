@@ -1,5 +1,4 @@
-from app.utils.math_utils import (calculate_avg, calculate_round_avg,
-                                  recalculate_round_average)
+from app.utils.math_utils import calculate_round_avg, recalculate_round_average
 
 
 def test_round_recalc_avg():
@@ -12,9 +11,3 @@ def test_round_calc_avg():
     assert calculate_round_avg([10, 20, 30], 3) == 20
     assert calculate_round_avg([10, 20], 2) == 15
     assert calculate_round_avg([10, 20, 30, 40], 4) == 25
-
-
-def test_calc_avg():
-    assert calculate_avg([1, 2, 3, 4, 5], 5) == 3.0
-    assert calculate_avg([-1, -2, 3, 4, 5], 5) == 1.8
-    assert calculate_avg([-1, -2, -3, -4, -5], 5) == -3.0

@@ -1,8 +1,10 @@
 from decimal import Decimal
 
-from app.utils.string_utils import (add_comma_every_n_symbols,
-                                    round_decimal_to_first_non_zero,
-                                    to_title_case)
+from app.utils.string_utils import (
+    add_comma_every_n_symbols,
+    round_decimal_to_first_non_zero,
+    to_title_case,
+)
 
 
 def test_add_comma_every_n_symbols():
@@ -14,7 +16,10 @@ def test_add_comma_every_n_symbols():
     assert add_comma_every_n_symbols("1000000", 2) == "1,00,00,00"
     assert add_comma_every_n_symbols(Decimal("100000.123"), 3) == "100,000.123"
     assert add_comma_every_n_symbols(Decimal("204170.52")) == "204,170.52"
-    assert add_comma_every_n_symbols(f"{Decimal("314378.4376000000000000"): .2f}") == "314,378.44"
+    assert (
+        add_comma_every_n_symbols(f"{Decimal(314378.4376000000000000): .2f}")
+        == "314,378.44"
+    )
 
 
 def test_round_decimal_to_first_non_zero():

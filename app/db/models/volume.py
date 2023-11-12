@@ -7,8 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.common.database import BaseModel
 
 
-class Liquidity(BaseModel):
-    __tablename__ = "liquidity"
+class Volume(BaseModel):
+    __tablename__ = "volume"
 
     average_volume: Mapped[int] = mapped_column(Integer, nullable=False)
     launch_id: Mapped[UUID] = mapped_column(

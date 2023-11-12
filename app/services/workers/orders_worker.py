@@ -2,19 +2,27 @@ import asyncio
 import concurrent.futures
 import copy
 import logging
-from decimal import Decimal
 from typing import Dict, List, Literal, NamedTuple, Set
+
+from _decimal import Decimal
 
 from app.common.config import settings
 from app.common.database import get_async_db
+from app.common.processor import Processor
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
 from app.db.repositories.order_book_anomaly_repository import (
-    create_order_book_anomalies, merge_and_cancel_anomalies)
-from app.services.clients.schemas.binance import OrderBookSnapshot
-from app.services.collectors.common import Collector, OrderBook
-from app.services.collectors.workers.common import Worker
+    create_order_book_anomalies,
+    merge_and_cancel_anomalies,
+)
+from app.services.collectors.clients.schemas.common import (
+    OrderBook,
+    OrderBookEvent,
+)
 from app.services.messengers.order_book_discord_messenger import (
-    OrderAnomalyNotification, OrderBookDiscordMessenger)
+    OrderAnomalyNotification,
+    OrderBookDiscordMessenger,
+)
+from app.services.workers.common import Worker
 from app.utils.math_utils import calculate_average_excluding_value_from_sum
 from app.utils.scheduling_utils import set_interval
 from app.utils.time_utils import get_current_time
@@ -49,7 +57,7 @@ class PositionedOrder(NamedTuple):
 class OrdersWorker(Worker):
     def __init__(
         self,
-        collector: Collector,
+        processor: Processor,
         discord_messenger: OrderBookDiscordMessenger,
         order_anomaly_multiplier: float = settings.ORDER_ANOMALY_MULTIPLIER,
         anomalies_detection_ttl: int = settings.ANOMALIES_DETECTION_TTL,
@@ -62,7 +70,7 @@ class OrdersWorker(Worker):
         maximum_order_book_anomalies: int = settings.MAXIMUM_ORDER_BOOK_ANOMALIES,
         observing_saved_limit_anomalies_ratio: float = settings.OBSERVING_SAVED_LIMIT_ANOMALIES_RATIO,
     ):
-        self._collector = collector
+        super().__init__(processor)
         self._discord_messenger = discord_messenger
         self._detected_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
         self._observing_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
@@ -74,7 +82,7 @@ class OrdersWorker(Worker):
         self._anomalies_observing_ttl = anomalies_observing_ttl
         self._anomalies_observing_ratio = Decimal(anomalies_observing_ratio)
         self._top_n_orders = top_n_orders
-        self._anomalies_significantly_increased_ratio = (
+        self._anomalies_significantly_increased_ratio = Decimal(
             anomalies_significantly_increased_ratio
         )
         # TODO: add support for different executor types
@@ -98,23 +106,23 @@ class OrdersWorker(Worker):
 
     async def __process_orders(self) -> None:
         logging.debug(
-            f"Orders processing cycle started [symbol={self._collector.symbol}]"
+            f"Orders processing cycle started [symbol={self._processor.symbol}]"
         )
 
         order_book = self.__group_orders(
-            copy.deepcopy(self._collector.order_book),
-            self._collector.delimiter,
+            copy.deepcopy(self._processor.order_book),
+            self._processor.delimiter,
         )
 
         await self.__handle_anomalies(order_book)
         await self.__handle_cancelled_anomalies(order_book)
 
     def __group_orders(
-        self, order_book: OrderBookSnapshot, delimiter: Decimal
+        self, order_book: OrderBookEvent, delimiter: Decimal
     ) -> OrderBook:
         return OrderBook(
-            a=self.group_order_book(order_book.asks, delimiter),
-            b=self.group_order_book(order_book.bids, delimiter),
+            a=self.group_order_book(order_book.a, delimiter),
+            b=self.group_order_book(order_book.b, delimiter),
         )
 
     async def __handle_anomalies(self, order_book: OrderBook) -> None:
@@ -161,6 +169,8 @@ class OrdersWorker(Worker):
         saved_limit_anomalies = copy.deepcopy(
             self._observing_saved_limit_anomalies
         )
+        if len(order_book.a.keys()) == 0 or len(order_book.a.keys()) == 0:
+            return []
         lowest_ask = min(order_book.a.keys())
         highest_bid = max(order_book.b.keys())
         for key, anomaly in saved_limit_anomalies.items():
@@ -189,8 +199,8 @@ class OrdersWorker(Worker):
     async def __save_anomalies(self, anomalies: List[OrderAnomaly]) -> None:
         order_book_anomalies = [
             OrderBookAnomalyModel(
-                launch_id=self._collector.launch_id,
-                pair_id=self._collector.pair_id,
+                launch_id=self._processor.launch_id,
+                pair_id=self._processor.pair_id,
                 price=anomaly.price,
                 quantity=anomaly.quantity,
                 order_liquidity=anomaly.order_liquidity,
@@ -224,7 +234,7 @@ class OrdersWorker(Worker):
         asyncio.create_task(
             self._discord_messenger.send_anomaly_detection_notifications(
                 order_anomaly_notifications,
-                self._collector.pair_id,
+                self._processor.pair_id,
             )
         )
 
@@ -251,7 +261,7 @@ class OrdersWorker(Worker):
         asyncio.create_task(
             self._discord_messenger.send_anomaly_cancellation_notifications(
                 order_anomaly_notifications,
-                self._collector.pair_id,
+                self._processor.pair_id,
             )
         )
 
@@ -268,7 +278,7 @@ class OrdersWorker(Worker):
         if len(top_orders) <= 1:
             return []
 
-        order_book_liquidity = 0
+        order_book_liquidity = Decimal(0.0)
         positioned_orders: list[PositionedOrder] = []
 
         for position, (price, qty) in enumerate(top_orders.items()):

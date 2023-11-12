@@ -1,52 +1,37 @@
 import logging
 from abc import ABC, abstractmethod
-from decimal import Decimal
+from typing import AsyncGenerator
 from uuid import UUID
 
-from pydantic import BaseModel
+from _decimal import Decimal
 
-from app.services.clients.schemas.binance import OrderBookSnapshot
-from app.utils.time_utils import (LONDON_TRADING_SESSION,
-                                  NEW_YORK_TRADING_SESSION,
-                                  TOKYO_TRADING_SESSION)
-
-trading_sessions = [
-    TOKYO_TRADING_SESSION,
-    LONDON_TRADING_SESSION,
-    NEW_YORK_TRADING_SESSION,
-]
-
-
-class OrderBook(BaseModel):
-    a: dict[Decimal, Decimal]
-    b: dict[Decimal, Decimal]
+from app.services.collectors.clients.schemas.common import OrderBookEvent
 
 
 class Collector(ABC):
     def __init__(
-        self,
-        launch_id: UUID,
-        pair_id: UUID,
-        exchange_id: UUID,
-        symbol: str,
-        delimiter: Decimal,
+        self, launch_id: UUID, pair_id: UUID, symbol: str, delimiter: Decimal
     ):
-        # TODO: make protected
-        self.order_book = OrderBookSnapshot(0, {}, {})
         self.launch_id = launch_id
         self.pair_id = pair_id
         self.symbol = symbol
         self.delimiter = delimiter
-        self.avg_volume = 0
-        self.volume_counter = 0
-        self._exchange_id = exchange_id
+        self.is_interrupted = False
+
+    async def listen_stream(self) -> AsyncGenerator[OrderBookEvent, None]:
+        logging.info(f"Collecting data for {self.symbol}")
+
+        # Open the stream and start the generator for the stream events
+        while self.is_interrupted is not True:
+            try:
+                async for event in self._broadcast_stream():
+                    yield event
+            except Exception as err:
+                logging.exception(
+                    exc_info=err,
+                    msg=f"Collector with pair {self.pair_id} will be relaunched",
+                )
 
     @abstractmethod
-    async def run(self):
-        pass
-
-    def clear_volume_stats(self):
-        logging.debug("Cleaning volume stats")
-
-        self.avg_volume = 0
-        self.volume_counter = 0
+    async def _broadcast_stream(self) -> AsyncGenerator[OrderBookEvent, None]:
+        yield

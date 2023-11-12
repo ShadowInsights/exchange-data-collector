@@ -8,7 +8,7 @@ from app.common.database import BaseModel
 from app.db.models.exchange import ExchangeModel
 from app.db.models.order_book import OrderBookModel
 from app.db.models.pair import PairModel
-from app.db.models.liquidity import Liquidity
+from app.db.models.volume import Volume
 from app.db.models.maestro import MaestroInstanceModel
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
 

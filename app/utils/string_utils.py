@@ -1,8 +1,7 @@
-from decimal import Decimal
-
 import regex
+from _decimal import Decimal
 
-DECIMAL_ROUND_REGEX = regex.compile(r"(\.\d*?[1-9])0+$|\.0+$")
+FLOAT_ROUND_REGEX = regex.compile(r"(\.\d*?[1-9])0+$|\.0+$")
 
 
 def add_comma_every_n_symbols(input_value, n=3) -> str:
@@ -38,10 +37,16 @@ def add_comma_every_n_symbols(input_value, n=3) -> str:
 
 def round_decimal_to_first_non_zero(num: Decimal) -> Decimal:
     str_num = str(num)
-    result = DECIMAL_ROUND_REGEX.sub(r"\1", str_num)
+    result = FLOAT_ROUND_REGEX.sub(r"\1", str_num)
 
     return result
 
 
 def to_title_case(s: str) -> str:
     return s.capitalize()
+
+
+def replace_char(
+    input_str: str, char_to_replace: str, replacement_char: str
+) -> str:
+    return input_str.replace(char_to_replace, replacement_char)

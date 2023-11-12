@@ -6,32 +6,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.config import settings
 from app.common.database import get_async_db
-from app.db.models.liquidity import Liquidity
-from app.db.repositories.liquidity_repository import (find_last_n_liquidity,
-                                                      save_all_liquidity)
-from app.db.repositories.order_book_repository import \
-    find_all_between_time_range
+from app.db.models.volume import Volume
+from app.db.repositories.order_book_repository import (
+    find_all_between_time_range,
+)
 from app.db.repositories.pair_repository import find_all_pairs_by_maestro_id
+from app.db.repositories.volume_repository import (
+    find_last_n_volumes,
+    save_all_volumes,
+)
 from app.utils.math_utils import recalculate_round_average
 
 NON_EXIST_BEGIN_TIME = datetime.datetime.fromtimestamp(1609459200)
 
 
-async def fill_missed_liquidity_intervals(maestro_id: UUID) -> None:
+async def fill_missed_volume_intervals(maestro_id: UUID) -> None:
     async with get_async_db() as session:
         pairs = await find_all_pairs_by_maestro_id(session, maestro_id)
 
         for pair in pairs:
             # Find latest liquidity record for the specified pair id
-            liquidity_entities = await find_last_n_liquidity(
-                session, pair.id, 1
-            )
+            liquidity_entities = await find_last_n_volumes(session, pair.id, 1)
 
     if liquidity_entities is not None and len(liquidity_entities) > 0:
         last_processed_time = liquidity_entities[
             0
         ].created_at + datetime.timedelta(
-            seconds=settings.LIQUIDITY_WORKER_JOB_INTERVAL + 1
+            seconds=settings.VOLUME_WORKER_JOB_INTERVAL + 1
         )
     else:
         # Set default value
@@ -45,16 +46,16 @@ async def fill_missed_liquidity_intervals(maestro_id: UUID) -> None:
             pair_id=pair.id,
         )
 
-        await save_all_liquidity(session, liquidity_records=liquidity_records)
+        await save_all_volumes(session, liquidity_records=liquidity_records)
 
 
 async def _append_missed_liquidity_records(
     session: AsyncSession, begin_time: datetime, pair_id: UUID
-) -> list[Liquidity]:
+) -> list[Volume]:
     missed_liquidity_records = []
 
     end_time = datetime.datetime.now() - datetime.timedelta(
-        seconds=settings.LIQUIDITY_WORKER_JOB_INTERVAL
+        seconds=settings.VOLUME_WORKER_JOB_INTERVAL
     )
 
     # Fetching unhandled order_books in interval between last liquidity record and time that we already monitor
@@ -87,14 +88,14 @@ async def _append_missed_liquidity_records(
         volume_counter += 1
 
         end_time = begin_time + datetime.timedelta(
-            seconds=settings.LIQUIDITY_WORKER_JOB_INTERVAL
+            seconds=settings.VOLUME_WORKER_JOB_INTERVAL
         )
 
         # Check if the order_book belongs to the next time interval
         if order_book.created_at > end_time:
             # Process average volume of the previous time interval
             missed_liquidity_records.append(
-                Liquidity(
+                Volume(
                     average_volume=avg_volume,
                     launch_id=order_book.launch_id,
                     pair_id=order_book.pair_id,
@@ -113,7 +114,7 @@ async def _append_missed_liquidity_records(
 
     # Process average volume of the last time interval
     missed_liquidity_records.append(
-        Liquidity(
+        Volume(
             average_volume=avg_volume,
             launch_id=order_books[0].launch_id,
             pair_id=order_books[0].pair_id,

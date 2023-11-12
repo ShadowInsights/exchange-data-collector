@@ -1,5 +1,7 @@
 from uuid import UUID
 
+from _decimal import Decimal
+
 from app.common.config import settings
 from app.common.database import get_async_db
 from app.db.repositories.exchange_repository import find_exchange_by_id
@@ -9,14 +11,14 @@ from app.services.messengers.discord_messenger import DiscordMessenger
 from app.utils.string_utils import add_comma_every_n_symbols, to_title_case
 
 
-class LiquidityDiscordMessenger(DiscordMessenger):
+class VolumeDiscordMessenger(DiscordMessenger):
     def __init__(self):
         super().__init__()
 
     async def send_notification(
         self,
         pair_id: UUID,
-        deviation: float,
+        deviation: Decimal,
         current_avg_volume: int,
         previous_avg_volume: int,
     ) -> None:
