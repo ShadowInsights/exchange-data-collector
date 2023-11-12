@@ -27,7 +27,7 @@ from app.services.workers.db_worker import DbWorker
 from app.services.workers.orders_worker import OrdersWorker
 from app.services.workers.volume_worker import VolumeWorker
 from app.utils.event_utils import EventHandler
-from app.utils.scheduling_utils import set_interval
+from app.utils.scheduling_utils import SetInterval
 
 
 class Maestro:
@@ -41,10 +41,14 @@ class Maestro:
         pairs = await self._retrieve_and_assign_pairs(maestro_id)
         await self._start_processors(maestro_id, pairs)
 
-    @set_interval(settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL)
-    async def _liveness_updater_loop(self, maestro_id: UUID) -> None:
+    @SetInterval(settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL)
+    async def _liveness_updater_loop(
+        self, maestro_id: UUID, callback_event: asyncio.Event = None
+    ) -> None:
         async with get_async_db() as db:
             await update_maestro_liveness_time(db, maestro_id)
+        if callback_event:
+            callback_event.set()
 
     async def _create_maestro(self) -> UUID:
         async with get_async_db() as db:

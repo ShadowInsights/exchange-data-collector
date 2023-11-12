@@ -18,7 +18,7 @@ from app.services.messengers.order_book_discord_messenger import (
     OrderAnomalyNotification, OrderBookDiscordMessenger)
 from app.services.workers.common import Worker
 from app.utils.math_utils import calculate_average_excluding_value_from_sum
-from app.utils.scheduling_utils import set_interval
+from app.utils.scheduling_utils import SetInterval
 from app.utils.time_utils import get_current_time
 
 
@@ -91,11 +91,13 @@ class OrdersWorker(Worker):
             observing_saved_limit_anomalies_ratio
         )
 
-    @set_interval(settings.ORDERS_WORKER_JOB_INTERVAL)
-    async def run(self) -> None:
-        await super().run()
+    @SetInterval(settings.ORDERS_WORKER_JOB_INTERVAL)
+    async def run(self, callback_event: asyncio.Event = None) -> None:
+        await super().run(callback_event)
+        if callback_event:
+            callback_event.set()
 
-    async def _run_worker(self) -> None:
+    async def _run_worker(self, callback_event: asyncio.Event = None) -> None:
         await self.__process_orders()
 
     async def __process_orders(self) -> None:

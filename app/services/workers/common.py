@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Dict
 
@@ -18,20 +19,23 @@ trading_sessions = [
 
 
 class Worker(ABC):
+
     def __init__(self, processor: Processor):
         self._processor = processor
 
-    async def run(self) -> None:
+
+    async def run(self, callback_event: asyncio.Event = None) -> None:
         if (
             settings.IS_TRADING_SESSION_VERIFICATION_REQUIRED
             and not is_current_time_inside_trading_sessions(trading_sessions)
         ):
             return
         else:
-            await self._run_worker()
+            await self._run_worker(callback_event)
 
     @abstractmethod
-    async def _run_worker(self) -> None:
+    def _run_worker(self, callback_event: asyncio.Event = None) -> None:
+
         pass
 
     @staticmethod
