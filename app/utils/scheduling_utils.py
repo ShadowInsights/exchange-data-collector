@@ -14,6 +14,7 @@ class SetInterval:
         self, func: Callable[..., Coroutine[Any, Any, None]]
     ) -> Callable[..., Coroutine[Any, Any, None]]:
         async def wrapper(*args, **kwargs) -> None:
+            await asyncio.sleep(self.interval_time)
             while self.get_is_interrupted() is not True:
                 try:
                     logging.debug("Worker function cycle started")
