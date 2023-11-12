@@ -1,7 +1,7 @@
-from _decimal import Decimal
 from enum import Enum
 from typing import Dict
 
+from _decimal import Decimal
 from pydantic import BaseModel
 
 

@@ -3,9 +3,8 @@ from uuid import UUID
 
 from _decimal import Decimal
 
-from app.services.collectors.clients.kraken_websocket_client import (
-    KrakenWebsocketClient,
-)
+from app.services.collectors.clients.kraken_websocket_client import \
+    KrakenWebsocketClient
 from app.services.collectors.clients.schemas.common import OrderBookEvent
 from app.services.collectors.common import Collector
 

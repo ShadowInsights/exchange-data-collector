@@ -12,23 +12,17 @@ from app.db.models.exchange import LiteralExchangeName
 from app.db.models.pair import PairModel
 from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.maestro_repository import (
-    create_maestro,
-    update_maestro_liveness_time,
-)
+    create_maestro, update_maestro_liveness_time)
 from app.db.repositories.pair_repository import (
-    find_all_not_collecting_pairs_for_update,
-    update_pairs_maestro_id,
-)
+    find_all_not_collecting_pairs_for_update, update_pairs_maestro_id)
 from app.services.collectors.binance_collector import BinanceCollector
 from app.services.collectors.common import Collector
 from app.services.collectors.kraken_collector import KrakenCollector
-from app.services.messengers.order_book_discord_messenger import (
-    OrderBookDiscordMessenger,
-)
-from app.services.messengers.volume_discord_messenger import (
-    VolumeDiscordMessenger,
-)
-from app.services.starters.volume_starters import fill_missed_volume_intervals
+from app.services.messengers.order_book_discord_messenger import \
+    OrderBookDiscordMessenger
+from app.services.messengers.volume_discord_messenger import \
+    VolumeDiscordMessenger
+# from app.services.starters.volume_starters import fill_missed_volume_intervals
 from app.services.workers.db_worker import DbWorker
 from app.services.workers.orders_worker import OrdersWorker
 from app.services.workers.volume_worker import VolumeWorker
@@ -82,8 +76,9 @@ class Maestro:
     async def _start_processors(
         self, maestro_id: UUID, pairs: list[PairModel]
     ) -> None:
-        logging.info("Filling missed liquidity intervals")
-        await fill_missed_volume_intervals(maestro_id)
+        # TODO: Remake filling missed volumes
+        # logging.info("Filling missed liquidity intervals")
+        # await fill_missed_volume_intervals(maestro_id)
 
         logging.info("Starting data collection")
         logging.info(f"Launch ID: {self._launch_id}")

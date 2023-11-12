@@ -11,17 +11,11 @@ from app.common.database import get_async_db
 from app.common.processor import Processor
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
 from app.db.repositories.order_book_anomaly_repository import (
-    create_order_book_anomalies,
-    merge_and_cancel_anomalies,
-)
-from app.services.collectors.clients.schemas.common import (
-    OrderBook,
-    OrderBookEvent,
-)
+    create_order_book_anomalies, merge_and_cancel_anomalies)
+from app.services.collectors.clients.schemas.common import (OrderBook,
+                                                            OrderBookEvent)
 from app.services.messengers.order_book_discord_messenger import (
-    OrderAnomalyNotification,
-    OrderBookDiscordMessenger,
-)
+    OrderAnomalyNotification, OrderBookDiscordMessenger)
 from app.services.workers.common import Worker
 from app.utils.math_utils import calculate_average_excluding_value_from_sum
 from app.utils.scheduling_utils import set_interval

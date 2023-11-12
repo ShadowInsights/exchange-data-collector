@@ -4,9 +4,8 @@ import httpx
 from _decimal import Decimal
 
 from app.services.collectors.clients.common import HttpClient
-from app.services.collectors.clients.schemas.binance import (
-    BinanceOrderBookSnapshot,
-)
+from app.services.collectors.clients.schemas.binance import \
+    BinanceOrderBookSnapshot
 
 
 class BinanceHttpClient(HttpClient):

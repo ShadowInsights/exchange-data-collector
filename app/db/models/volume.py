@@ -8,7 +8,7 @@ from app.common.database import BaseModel
 
 
 class Volume(BaseModel):
-    __tablename__ = "volume"
+    __tablename__ = "volumes"
 
     average_volume: Mapped[int] = mapped_column(Integer, nullable=False)
     launch_id: Mapped[UUID] = mapped_column(

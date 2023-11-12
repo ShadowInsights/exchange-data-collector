@@ -4,18 +4,11 @@ import logging
 import websockets
 
 from app.services.collectors.clients.common import WebsocketClient
-from app.services.collectors.clients.schemas.common import (
-    OrderBookSnapshot,
-    OrderBookUpdate,
-)
+from app.services.collectors.clients.schemas.common import (OrderBookSnapshot,
+                                                            OrderBookUpdate)
 from app.services.collectors.clients.schemas.kraken import (
-    KrakenSnapshotPayload,
-    KrakenOrdersDict,
-    KrakenOrder,
-    KrakenOrderBookDepthUpdate,
-    KrakenOrderBookSnapshot,
-    KrakenOrderBook,
-)
+    KrakenOrder, KrakenOrderBook, KrakenOrderBookDepthUpdate,
+    KrakenOrderBookSnapshot, KrakenOrdersDict, KrakenSnapshotPayload)
 
 
 class KrakenWebsocketClient(WebsocketClient):

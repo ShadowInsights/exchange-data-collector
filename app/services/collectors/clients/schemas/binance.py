@@ -1,9 +1,7 @@
 from _decimal import Decimal
 
-from app.services.collectors.clients.schemas.common import (
-    OrderBookSnapshot,
-    OrderBookUpdate,
-)
+from app.services.collectors.clients.schemas.common import (OrderBookSnapshot,
+                                                            OrderBookUpdate)
 
 
 class BinanceOrderBookSnapshot(OrderBookSnapshot):

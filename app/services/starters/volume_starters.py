@@ -7,14 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.config import settings
 from app.common.database import get_async_db
 from app.db.models.volume import Volume
-from app.db.repositories.order_book_repository import (
-    find_all_between_time_range,
-)
+from app.db.repositories.order_book_repository import \
+    find_all_between_time_range
 from app.db.repositories.pair_repository import find_all_pairs_by_maestro_id
-from app.db.repositories.volume_repository import (
-    find_last_n_volumes,
-    save_all_volumes,
-)
+from app.db.repositories.volume_repository import (find_last_n_volumes,
+                                                   save_all_volumes)
 from app.utils.math_utils import recalculate_round_average
 
 NON_EXIST_BEGIN_TIME = datetime.datetime.fromtimestamp(1609459200)
