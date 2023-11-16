@@ -87,7 +87,6 @@ class Maestro:
                             minutes=self._maestro_max_liveness_gap_minutes
                         ),
                     )
-                    print(result)
                     if len(result.pair_ids) == 0:
                         continue
                     if isinstance(result, CollectingPairsForUpdateResult):
