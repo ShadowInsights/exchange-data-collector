@@ -20,23 +20,19 @@ class SetInterval:
                     logging.debug("Worker function cycle started")
 
                     callback_event = asyncio.Event()
-
                     start_time = get_current_time()
 
                     task = asyncio.create_task(
                         func(*args, callback_event=callback_event, **kwargs)
                     )
                     await callback_event.wait()
-
-                    time_spent = get_current_time() - start_time
-
                     callback_event.clear()
 
+                    time_spent = get_current_time() - start_time
                     if time_spent < self.interval_time:
                         await asyncio.sleep(self.interval_time - time_spent)
                     else:
                         await task
-
                         logging.warn(
                             f"Active work took longer than the interval time: {time_spent} seconds"
                         )

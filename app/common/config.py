@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     DISCORD_ORDER_ANOMALY_ASK_EMBED_COLOR: str
     DISCORD_ORDER_BOOK_ANOMALY_CANCELED_EMBED_COLOR: str
 
+    MAESTRO_MAX_LIVENESS_GAP_MINUTES: int = 1
+
 
 settings = Settings()
 

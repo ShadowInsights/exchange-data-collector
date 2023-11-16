@@ -18,8 +18,3 @@ class PairModel(BaseModel):
     exchange_id: Mapped[UUID] = mapped_column(
         pg_UUID(as_uuid=True), ForeignKey("exchanges.id"), nullable=False
     )
-    maestro_instance_id: Mapped[UUID] = mapped_column(
-        pg_UUID(as_uuid=True),
-        ForeignKey("maestro_instances.id"),
-        nullable=True,
-    )

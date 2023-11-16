@@ -9,12 +9,13 @@ from app.common.config import settings
 from app.common.database import get_async_db
 from app.common.processor import Processor
 from app.db.models.exchange import LiteralExchangeName
-from app.db.models.pair import PairModel
 from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.maestro_repository import (
-    create_maestro, update_maestro_liveness_time)
-from app.db.repositories.pair_repository import (
-    find_all_not_collecting_pairs_for_update, update_pairs_maestro_id)
+    CollectingPairsForUpdateResult, create_maestro,
+    create_maestro_pair_associations, delete_maestro_by_id,
+    find_all_not_collecting_pairs_for_update, update_maestro_liveness_time,
+    update_maestro_pair_associations)
+from app.db.repositories.pair_repository import find_pair_by_id
 from app.services.collectors.binance_collector import BinanceCollector
 from app.services.collectors.common import Collector
 from app.services.collectors.kraken_collector import KrakenCollector
@@ -22,7 +23,6 @@ from app.services.messengers.order_book_discord_messenger import \
     OrderBookDiscordMessenger
 from app.services.messengers.volume_discord_messenger import \
     VolumeDiscordMessenger
-# from app.services.starters.volume_starters import fill_missed_volume_intervals
 from app.services.workers.db_worker import DbWorker
 from app.services.workers.orders_worker import OrdersWorker
 from app.services.workers.volume_worker import VolumeWorker
@@ -31,72 +31,100 @@ from app.utils.scheduling_utils import SetInterval
 
 
 class Maestro:
-    def __init__(self, launch_id: UUID) -> None:
+    def __init__(
+        self,
+        launch_id: UUID,
+        maestro_pairs_retrieval_interval: int = settings.MAESTRO_PAIRS_RETRIEVAL_INTERVAL,
+        maestro_max_liveness_gap_minutes: int = settings.MAESTRO_MAX_LIVENESS_GAP_MINUTES,
+    ) -> None:
         self._launch_id = launch_id
+        self._maestro_pairs_retrieval_interval = (
+            maestro_pairs_retrieval_interval
+        )
+        self._maestro_max_liveness_gap_minutes = (
+            maestro_max_liveness_gap_minutes
+        )
+        self._maestro_id: UUID = None
         self._processor_tasks: list[asyncio.Task] = []
 
     async def run(self) -> None:
-        maestro_id = await self._create_maestro()
-        asyncio.create_task(self._liveness_updater_loop(maestro_id))
-        pairs = await self._retrieve_and_assign_pairs(maestro_id)
-        await self._start_processors(maestro_id, pairs)
+        await self._init_maestro()
+        asyncio.create_task(self._liveness_updater_loop())
+        pairs = await self._retrieve_and_assign_pairs()
+        await self._start_processors(pairs)
 
     @SetInterval(settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL)
     async def _liveness_updater_loop(
-        self, maestro_id: UUID, callback_event: asyncio.Event = None
+        self, callback_event: asyncio.Event = None
     ) -> None:
         async with get_async_db() as db:
-            await update_maestro_liveness_time(db, maestro_id)
+            await update_maestro_liveness_time(db, self._maestro_id)
         if callback_event:
             callback_event.set()
 
-    async def _create_maestro(self) -> UUID:
+    async def _init_maestro(self) -> None:
         async with get_async_db() as db:
             maestro_model = await create_maestro(db, self._launch_id)
-        logging.info(f"Maestro created {maestro_model.id}")
-        return maestro_model.id
+
+        self._maestro_id = maestro_model.id
+
+        logging.info(f"Maestro initialized with id={self._maestro_id}")
 
     async def _retrieve_and_assign_pairs(
-        self, maestro_id: UUID
-    ) -> list[PairModel]:
+        self,
+    ) -> list[UUID]:
+        logging.info("Retrieving pairs for data collection")
+
         while True:
             try:
-                await asyncio.sleep(settings.MAESTRO_PAIRS_RETRIEVAL_INTERVAL)
-                logging.info("Retrieving pairs for data collection")
-                liveness_time_interval = datetime.now() - timedelta(minutes=1)
+                await asyncio.sleep(self._maestro_pairs_retrieval_interval)
+
                 async with get_async_db() as db:
-                    pairs = await find_all_not_collecting_pairs_for_update(
-                        db, liveness_time_interval
+                    result = await find_all_not_collecting_pairs_for_update(
+                        db,
+                        datetime.utcnow()
+                        - timedelta(
+                            minutes=self._maestro_max_liveness_gap_minutes
+                        ),
                     )
-                    if pairs:
-                        await update_pairs_maestro_id(db, pairs, maestro_id)
-                        logging.info("Pairs retrieved")
-                        return pairs
+                    print(result)
+                    if len(result.pair_ids) == 0:
+                        continue
+                    if isinstance(result, CollectingPairsForUpdateResult):
+                        await update_maestro_pair_associations(
+                            db,
+                            result.attached_maestro_id,
+                            self._maestro_id,
+                            False,
+                        )
+                        await delete_maestro_by_id(
+                            db, result.attached_maestro_id
+                        )
+                        logging.info("Pairs reassignment completed")
                     else:
-                        logging.info("No pairs found")
+                        await create_maestro_pair_associations(
+                            db, self._maestro_id, result.pair_ids
+                        )
+                        logging.info("Pairs assignment completed")
+                    logging.info(f"Pairs retrieved: {result.pair_ids}")
+                    return result.pair_ids
             except Exception as e:
                 logging.exception(f"Error while retrieving pairs: {e}")
 
-    async def _start_processors(
-        self, maestro_id: UUID, pairs: list[PairModel]
-    ) -> None:
-        # TODO: Remake filling missed volumes
-        # logging.info("Filling missed liquidity intervals")
-        # await fill_missed_volume_intervals(maestro_id)
-
+    async def _start_processors(self, pair_ids: list[UUID]) -> None:
         logging.info("Starting data collection")
         logging.info(f"Launch ID: {self._launch_id}")
 
-        for pair in pairs:
+        for pair_id in pair_ids:
             event_handler = EventHandler()
 
             async with get_async_db() as session:
+                pair = await find_pair_by_id(session, pair_id)
                 exchange = await find_exchange_by_id(session, pair.exchange_id)
-                exchange_name = exchange.name
 
             # Create collector for necessary exchange
             collector = self._create_collector(
-                exchange_name=exchange_name,
+                exchange_name=exchange.name,
                 launch_id=self._launch_id,
                 pair_id=pair.id,
                 symbol=pair.symbol,
@@ -127,7 +155,7 @@ class Maestro:
     def _create_default_workers(
         self, processor: Processor, event_handler: EventHandler
     ):
-        default_workers = [
+        default_workers: list[DbWorker | DbWorker | OrdersWorker] = [
             DbWorker(processor=processor),
             VolumeWorker(
                 processor=processor,
