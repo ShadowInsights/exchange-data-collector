@@ -2,7 +2,7 @@ from typing import Literal
 from uuid import UUID
 
 from _decimal import Decimal
-from sqlalchemy import DECIMAL, ForeignKey, Integer
+from sqlalchemy import DECIMAL, DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID as pg_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,3 +25,6 @@ class OrderBookAnomalyModel(BaseModel):
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     type: Mapped[Literal["ask", "bid"]] = mapped_column(nullable=False)
     is_cancelled: Mapped[bool] = mapped_column(nullable=True)
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime, nullable=True, server_default="now()"
+    )

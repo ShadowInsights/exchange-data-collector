@@ -18,3 +18,12 @@ async def merge_and_cancel_anomalies(
         merged_anomaly = await session.merge(anomaly)
         merged_anomaly.is_cancelled = True
     await session.commit()
+
+
+async def merge_and_confirm_anomalies(
+    session: AsyncSession, anomalies_to_confirm: list[OrderBookAnomalyModel]
+):
+    for anomaly in anomalies_to_confirm:
+        merged_anomaly = await session.merge(anomaly)
+        merged_anomaly.is_cancelled = True
+    await session.commit()

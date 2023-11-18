@@ -32,6 +32,7 @@ class VolumeWorker(Worker):
         super().__init__(processor=processor)
         self._event_handler = event_handler
         self._discord_messenger = discord_messenger
+        # TODO: add support for different executor types
         self._executor_factory = (
             executor_factory or concurrent.futures.ThreadPoolExecutor
         )
@@ -47,8 +48,10 @@ class VolumeWorker(Worker):
     @SetInterval(settings.VOLUME_WORKER_JOB_INTERVAL)
     async def run(self, callback_event: asyncio.Event = None) -> None:
         await super().run(callback_event)
+        if callback_event:
+            callback_event.set()
 
-    async def _run_worker(self, callback_event: asyncio.Event = None) -> None:
+    async def _run_worker(self, _: asyncio.Event = None) -> None:
         logging.debug("Saving liquidity record")
 
         last_avg_volumes = copy.deepcopy(self._last_average_volumes)

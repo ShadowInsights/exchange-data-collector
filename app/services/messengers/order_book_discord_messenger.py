@@ -131,6 +131,30 @@ class OrderBookDiscordMessenger(DiscordMessenger):
     async def send_anomaly_cancellation_notifications(
         self, anomalies: List[OrderAnomalyNotification], pair_id: UUID
     ) -> None:
+        await self.__send_anomaly_destiny_notifications(
+            anomalies,
+            pair_id,
+            "cancelled",
+            settings.DISCORD_ORDER_BOOK_ANOMALY_CANCELED_EMBED_COLOR,
+        )
+
+    async def send_anomaly_realization_notifications(
+        self, anomalies: List[OrderAnomalyNotification], pair_id: UUID
+    ) -> None:
+        await self.__send_anomaly_destiny_notifications(
+            anomalies,
+            pair_id,
+            "realized",
+            settings.DISCORD_ORDER_BOOK_ANOMALY_REALIZED_EMBED_COLOR,
+        )
+
+    async def __send_anomaly_destiny_notifications(
+        self,
+        anomalies: List[OrderAnomalyNotification],
+        pair_id: UUID,
+        destiny: str,
+        destiny_color: str,
+    ) -> None:
         exchange, pair = await self._get_exchange_and_pair(pair_id)
         formatted_exchange_name = to_title_case(exchange.name)
 
@@ -143,7 +167,7 @@ class OrderBookDiscordMessenger(DiscordMessenger):
                 formatted_order_liquidity,
             ) = self._format_anomaly_fields(anomaly)
             description = (
-                f"Order anomaly {anomaly.type} was cancelled "
+                f"Order anomaly {anomaly.type} was {destiny} "
                 f"for **{pair.symbol}** on **{formatted_exchange_name}**"
             )
             fields = [
@@ -174,7 +198,7 @@ class OrderBookDiscordMessenger(DiscordMessenger):
             cancellation_tasks.append(
                 self._send_notification(
                     message,
-                    settings.DISCORD_ORDER_BOOK_ANOMALY_CANCELED_EMBED_COLOR,
+                    destiny_color,
                 )
             )
 

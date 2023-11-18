@@ -38,10 +38,10 @@ class DbWorker(Worker):
         if callback_event:
             callback_event.set()
 
-    async def _run_worker(self, callback_event: asyncio.Event = None) -> None:
-        asyncio.create_task(self.__db_worker(callback_event))
+    async def _run_worker(self, _: asyncio.Event = None) -> None:
+        await self.__db_worker()
 
-    async def __db_worker(self, callback_event: asyncio.Event = None) -> None:
+    async def __db_worker(self) -> None:
         collector_current_order_book = copy.deepcopy(
             self._processor.order_book
         )

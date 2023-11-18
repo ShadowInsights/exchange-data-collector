@@ -148,7 +148,7 @@ async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
             average_liquidity=Decimal("27500.00"),
             type="ask",
             position=0,
-            is_cancelled=None,
+            is_cancelled=False,
         ),
         OrderBookAnomalyModel(
             price=Decimal("27200.0"),
@@ -157,7 +157,7 @@ async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
             average_liquidity=Decimal("54033.33333333333333333333333"),
             type="bid",
             position=0,
-            is_cancelled=None,
+            is_cancelled=False,
         ),
     ]
 
@@ -1638,7 +1638,7 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
             average_liquidity=Decimal("27433.33333333333333333333333"),
             type="ask",
             position=2,
-            is_cancelled=False,
+            is_cancelled=None,
         ),
         OrderBookAnomalyModel(
             price=Decimal("27000.0"),
@@ -1647,7 +1647,7 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
             average_liquidity=Decimal("36100.00"),
             type="bid",
             position=2,
-            is_cancelled=False,
+            is_cancelled=None,
         ),
     ]
 
@@ -1835,7 +1835,7 @@ async def test_non_first_anomaly_did_not_canceled(
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
         AnomalyKey(
             price=Decimal("27000.0"), type="bid"
@@ -1847,7 +1847,7 @@ async def test_non_first_anomaly_did_not_canceled(
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
     }
 
@@ -1932,7 +1932,7 @@ async def test_non_first_anomaly_canceled(
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
         AnomalyKey(
             price=Decimal("27000.0"), type="bid"
@@ -1944,7 +1944,7 @@ async def test_non_first_anomaly_canceled(
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
     }
 
@@ -2051,7 +2051,7 @@ async def test_valid_anomaly_canceled(
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
         AnomalyKey(
             price=Decimal("27000.0"), type="bid"
@@ -2063,7 +2063,7 @@ async def test_valid_anomaly_canceled(
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
     }
 
@@ -2125,7 +2125,17 @@ async def test_valid_anomaly_canceled(
     "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_cancellation_notifications",
     new_callable=AsyncMock,
 )
+@patch(
+    "app.services.workers.orders_worker.merge_and_confirm_anomalies",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_realization_notifications",
+    new_callable=AsyncMock,
+)
 async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
+    send_anomaly_realization_notifications_mock: AsyncMock,
+    mock_merge_and_confirm_anomalies: AsyncMock,
     mock_order_book_discord_messenger_send_anomaly_cancellation_notifications: AsyncMock,
     mock_merge_and_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
@@ -2164,7 +2174,7 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
         AnomalyKey(
             price=Decimal("27000.0"), type="bid"
@@ -2176,26 +2186,21 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
     }
 
     await worker._run_worker()
 
-    assert len(worker._observing_saved_limit_anomalies) == 0
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
-        == 1
-    )
-    assert mock_merge_and_cancel_anomalies.call_count == 1
+    cancellation_call = mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_args_list[
+        0
+    ]
+    order_anomaly_cancellation = cancellation_call[0][0]
+    realization_call = mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_args_list[
+        0
+    ]
+    order_anomaly_realization = realization_call[0][0]
 
-    send_anomaly_notifications_mock = (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
-    )
-    order_anomaly_cancellation_call = (
-        send_anomaly_notifications_mock.call_args_list[0]
-    )
-    order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
         OrderAnomalyNotification(
             price=Decimal("27000.0"),
@@ -2206,7 +2211,32 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
             position=2,
         ),
     ]
+    expected_order_anomaly_realization = [
+        OrderAnomalyNotification(
+            price=Decimal("27500.0"),
+            quantity=Decimal("9.0"),
+            order_liquidity=Decimal("247500.00"),
+            average_liquidity=Decimal("27433.33333333333333333333333"),
+            type="ask",
+            position=2,
+        ),
+    ]
+
+    assert len(worker._observing_saved_limit_anomalies) == 0
+
+    assert (
+        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
+        == 1
+    )
+    assert mock_merge_and_cancel_anomalies.call_count == 1
     assert order_anomaly_cancellation == expected_order_anomaly_cancellation
+
+    assert (
+        mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_count
+        == 1
+    )
+    assert mock_merge_and_confirm_anomalies.call_count == 1
+    assert order_anomaly_realization == expected_order_anomaly_realization
 
 
 @patch(
@@ -2228,7 +2258,17 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_cancellation_notifications",
     new_callable=AsyncMock,
 )
+@patch(
+    "app.services.workers.orders_worker.merge_and_confirm_anomalies",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_realization_notifications",
+    new_callable=AsyncMock,
+)
 async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
+    send_anomaly_realization_notifications_mock: AsyncMock,
+    mock_merge_and_confirm_anomalies: AsyncMock,
     mock_order_book_discord_messenger_send_anomaly_cancellation_notifications: AsyncMock,
     mock_merge_and_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
@@ -2267,7 +2307,7 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
         AnomalyKey(
             price=Decimal("27000.0"), type="bid"
@@ -2279,26 +2319,21 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=False,
+            is_cancelled=None,
         ),
     }
 
     await worker._run_worker()
 
-    assert len(worker._observing_saved_limit_anomalies) == 0
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
-        == 1
-    )
-    assert mock_merge_and_cancel_anomalies.call_count == 1
+    cancellation_call = mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_args_list[
+        0
+    ]
+    order_anomaly_cancellation = cancellation_call[0][0]
+    realization_call = mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_args_list[
+        0
+    ]
+    order_anomaly_realization = realization_call[0][0]
 
-    send_anomaly_notifications_mock = (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
-    )
-    order_anomaly_cancellation_call = (
-        send_anomaly_notifications_mock.call_args_list[0]
-    )
-    order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
         OrderAnomalyNotification(
             price=Decimal("27500.0"),
@@ -2309,4 +2344,159 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
             position=2,
         ),
     ]
+    expected_order_anomaly_realization = [
+        OrderAnomalyNotification(
+            price=Decimal("27000.0"),
+            quantity=Decimal("9.0"),
+            order_liquidity=Decimal("243000.00"),
+            average_liquidity=Decimal("36100.00"),
+            type="bid",
+            position=2,
+        ),
+    ]
+
+    assert len(worker._observing_saved_limit_anomalies) == 0
+
+    assert (
+        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
+        == 1
+    )
+    assert mock_merge_and_cancel_anomalies.call_count == 1
     assert order_anomaly_cancellation == expected_order_anomaly_cancellation
+
+    assert (
+        mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_count
+        == 1
+    )
+    assert mock_merge_and_confirm_anomalies.call_count == 1
+    assert order_anomaly_realization == expected_order_anomaly_realization
+
+
+@patch(
+    "app.services.workers.orders_worker.create_order_book_anomalies",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.workers.orders_worker.get_current_time",
+)
+@patch(
+    "app.services.workers.orders_worker.merge_and_cancel_anomalies",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_cancellation_notifications",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.workers.orders_worker.merge_and_confirm_anomalies",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_realization_notifications",
+    new_callable=AsyncMock,
+)
+async def test_valid_anomaly_first_position_realized(
+    send_anomaly_realization_notifications_mock: AsyncMock,
+    mock_merge_and_confirm_anomalies: AsyncMock,
+    mock_order_book_discord_messenger_send_anomaly_cancellation_notifications: AsyncMock,
+    mock_merge_and_cancel_anomalies: AsyncMock,
+    mock_get_current_time: Mock,
+    mock_order_book_discord_messenger: AsyncMock,
+    mock_create_order_book_anomalies: AsyncMock,
+    processor: Processor,
+) -> None:
+    current_time = 2.5
+    mock_get_current_time.return_value = current_time
+    processor._order_book = OrderBook(
+        b={
+            Decimal("27200.0"): Decimal("1.0"),
+            Decimal("27100.0"): Decimal("2.0"),
+            Decimal("26900.0"): Decimal("1.0"),
+            Decimal("26800.0"): Decimal("20.0"),
+        },
+        a={
+            Decimal("27300.0"): Decimal("1.0"),
+            Decimal("27400.0"): Decimal("1.0"),
+            Decimal("27600.0"): Decimal("1.0"),
+            Decimal("27800.0"): Decimal("20.0"),
+        },
+    )
+    worker = OrdersWorker(
+        processor=processor,
+        discord_messenger=mock_order_book_discord_messenger,
+        order_anomaly_multiplier=1.5,
+        anomalies_detection_ttl=1,
+        anomalies_observing_ttl=1,
+        anomalies_observing_ratio=0.2,
+        top_n_orders=4,
+        observing_saved_limit_anomalies_ratio=0.25,
+    )
+    worker._observing_saved_limit_anomalies = {
+        AnomalyKey(
+            price=Decimal("27300.0"), type="ask"
+        ): OrderBookAnomalyModel(
+            id="aeb91a04-24fb-480f-a13b-42c74d5d797d",
+            price=Decimal("27300.0"),
+            quantity=Decimal("9.0"),
+            order_liquidity=Decimal("245700.00"),
+            average_liquidity=Decimal("27433.33333333333333333333333"),
+            position=2,
+            type="ask",
+            is_cancelled=None,
+        ),
+        AnomalyKey(
+            price=Decimal("27200.0"), type="bid"
+        ): OrderBookAnomalyModel(
+            id="ecd0dd4a-c796-457b-87d3-b782777031c5",
+            price=Decimal("27200.0"),
+            quantity=Decimal("9.0"),
+            order_liquidity=Decimal("244800.00"),
+            average_liquidity=Decimal("36100.00"),
+            position=2,
+            type="bid",
+            is_cancelled=None,
+        ),
+    }
+
+    await worker._run_worker()
+
+    realization_call = mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_args_list[
+        0
+    ]
+    order_anomaly_realization = realization_call[0][0]
+    expected_order_anomaly_realization = [
+        OrderAnomalyNotification(
+            price=Decimal("27300.0"),
+            quantity=Decimal("9.0"),
+            order_liquidity=Decimal("245700.00"),
+            average_liquidity=Decimal("27433.33333333333333333333333"),
+            position=2,
+            type="ask",
+        ),
+        OrderAnomalyNotification(
+            price=Decimal("27200.0"),
+            quantity=Decimal("9.0"),
+            order_liquidity=Decimal("244800.00"),
+            average_liquidity=Decimal("36100.00"),
+            position=2,
+            type="bid",
+        ),
+    ]
+
+    assert len(worker._observing_saved_limit_anomalies) == 0
+    assert (
+        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
+        == 0
+    )
+    assert mock_merge_and_cancel_anomalies.call_count == 0
+
+    assert (
+        mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_count
+        == 1
+    )
+    assert mock_merge_and_confirm_anomalies.call_count == 1
+    assert order_anomaly_realization == expected_order_anomaly_realization
