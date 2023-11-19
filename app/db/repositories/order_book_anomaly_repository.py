@@ -25,5 +25,5 @@ async def merge_and_confirm_anomalies(
 ):
     for anomaly in anomalies_to_confirm:
         merged_anomaly = await session.merge(anomaly)
-        merged_anomaly.is_cancelled = True
+        merged_anomaly.is_cancelled = False
     await session.commit()
