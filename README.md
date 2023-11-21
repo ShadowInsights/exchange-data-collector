@@ -2,8 +2,7 @@
 
 ### Setup .evn
 
-Build .env file from .development.env for local development
-Remove PYTHON_ENV=DEV from .env file for production environment
+Build .env file from .development.env for local development.
 
 ### Launch poetry
 
