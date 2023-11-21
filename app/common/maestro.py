@@ -11,18 +11,25 @@ from app.common.processor import Processor
 from app.db.models.exchange import LiteralExchangeName
 from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.maestro_repository import (
-    CollectingPairsForUpdateResult, create_maestro,
-    create_maestro_pair_associations, delete_maestro_by_id,
-    find_all_not_collecting_pairs_for_update, update_maestro_liveness_time,
-    update_maestro_pair_associations)
+    CollectingPairsForUpdateResult,
+    create_maestro,
+    create_maestro_pair_associations,
+    delete_maestro_by_id,
+    find_all_not_collecting_pairs_for_update,
+    update_maestro_liveness_time,
+    update_maestro_pair_associations,
+)
 from app.db.repositories.pair_repository import find_pair_by_id
 from app.services.collectors.binance_collector import BinanceCollector
+from app.services.collectors.coinbase_collector import CoinbaseCollector
 from app.services.collectors.common import Collector
 from app.services.collectors.kraken_collector import KrakenCollector
-from app.services.messengers.order_book_discord_messenger import \
-    OrderBookDiscordMessenger
-from app.services.messengers.volume_discord_messenger import \
-    VolumeDiscordMessenger
+from app.services.messengers.order_book_discord_messenger import (
+    OrderBookDiscordMessenger,
+)
+from app.services.messengers.volume_discord_messenger import (
+    VolumeDiscordMessenger,
+)
 from app.services.workers.db_worker import DbWorker
 from app.services.workers.orders_worker import OrdersWorker
 from app.services.workers.volume_worker import VolumeWorker
@@ -188,6 +195,13 @@ class Maestro:
                 )
             case "KRAKEN":
                 return KrakenCollector(
+                    launch_id=launch_id,
+                    pair_id=pair_id,
+                    symbol=symbol,
+                    delimiter=delimiter,
+                )
+            case "COINBASE":
+                return CoinbaseCollector(
                     launch_id=launch_id,
                     pair_id=pair_id,
                     symbol=symbol,
