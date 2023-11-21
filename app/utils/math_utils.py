@@ -29,3 +29,9 @@ def calculate_avg_by_summary(summary: int, counter: int) -> int:
     assert counter != 0
 
     return round(summary / counter)
+
+
+def calculate_diff_over_sum(diminished: float, subtrahend: float) -> float:
+    assert diminished != 0 and subtrahend != 0
+
+    return round((diminished - subtrahend) / (diminished + subtrahend), 2)

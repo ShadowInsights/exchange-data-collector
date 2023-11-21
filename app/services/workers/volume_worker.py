@@ -15,7 +15,8 @@ from app.services.messengers.volume_discord_messenger import \
     VolumeDiscordMessenger
 from app.services.workers.common import Worker
 from app.utils.event_utils import EventHandler
-from app.utils.math_utils import calculate_avg_by_summary, calculate_round_avg
+from app.utils.math_utils import (calculate_avg_by_summary,
+                                  calculate_diff_over_sum, calculate_round_avg)
 from app.utils.scheduling_utils import SetInterval
 
 
@@ -39,6 +40,9 @@ class VolumeWorker(Worker):
         self._volume_anomaly_ratio = Decimal(volume_anomaly_ratio)
         self._volume_comparative_array_size = volume_comparative_array_size
         self._last_average_volumes = self._find_last_average_volumes()
+        self._last_bid_ask_ratio = self._find_last_bid_ask_ratio()
+        self._summary_asks_volume_per_interval = 0
+        self._summary_bids_volume_per_interval = 0
         self._summary_volume_per_interval = 0
         self._volume_updates_counter_per_interval = 0
         self._event_handler.on(
@@ -54,7 +58,22 @@ class VolumeWorker(Worker):
     async def _run_worker(self, _: asyncio.Event = None) -> None:
         logging.debug("Saving liquidity record")
 
+        last_bid_ask_ratio = copy.deepcopy(self._last_bid_ask_ratio)
         last_avg_volumes = copy.deepcopy(self._last_average_volumes)
+
+        average_bids_volume = calculate_avg_by_summary(
+            summary=self._summary_bids_volume_per_interval,
+            counter=self._volume_updates_counter_per_interval,
+        )
+
+        average_asks_volume = calculate_avg_by_summary(
+            summary=self._summary_asks_volume_per_interval,
+            counter=self._volume_updates_counter_per_interval,
+        )
+
+        bid_ask_ratio = calculate_diff_over_sum(
+            diminished=average_bids_volume, subtrahend=average_asks_volume
+        )
 
         average_volume = calculate_avg_by_summary(
             summary=self._summary_volume_per_interval,
@@ -62,7 +81,7 @@ class VolumeWorker(Worker):
         )
 
         # Save liquidity record
-        await self._save_liquidity_record(average_volume)
+        await self._save_liquidity_record(average_volume, bid_ask_ratio)
 
         # Perform anomaly analysis
         with self._executor_factory() as executor:
@@ -74,6 +93,8 @@ class VolumeWorker(Worker):
         if deviation:
             self.__send_notification(
                 deviation=deviation,
+                bid_ask_ratio=bid_ask_ratio,
+                last_bid_ask_ratio=last_bid_ask_ratio,
                 average_volume=average_volume,
                 last_average_volumes=last_avg_volumes,
             )
@@ -118,6 +139,8 @@ class VolumeWorker(Worker):
     def __send_notification(
         self,
         deviation: Decimal,
+        bid_ask_ratio: float,
+        last_bid_ask_ratio: list[float],
         average_volume: int,
         last_average_volumes: list[int],
     ) -> None:
@@ -125,6 +148,12 @@ class VolumeWorker(Worker):
             self._discord_messenger.send_notification(
                 pair_id=self._processor.pair_id,
                 deviation=deviation,
+                current_bid_ask_ratio=bid_ask_ratio,
+                previous_bid_ask_ratio=round(
+                    sum(last_bid_ask_ratio)
+                    / self._volume_comparative_array_size,
+                    2,
+                ),
                 current_avg_volume=round(average_volume),
                 previous_avg_volume=calculate_round_avg(
                     last_average_volumes,
@@ -133,11 +162,14 @@ class VolumeWorker(Worker):
             )
         )
 
-    async def _save_liquidity_record(self, avg_volume: int) -> None:
+    async def _save_liquidity_record(
+        self, avg_volume: int, bid_ask_ratio: float
+    ) -> None:
         async with get_async_db() as session:
             # Save  runtime liquidity record
             await save_volume(
                 session,
+                bid_ask_ratio=bid_ask_ratio,
                 avg_volume=avg_volume,
                 launch_id=self._processor.launch_id,
                 pair_id=self._processor.pair_id,
@@ -156,6 +188,19 @@ class VolumeWorker(Worker):
 
         # Fill last avg volumes with average volume from extracted liquidity records
         return [liquidity.average_volume for liquidity in last_average_volumes]
+
+    def _find_last_bid_ask_ratio(self) -> list:
+        with get_sync_db() as session:
+            # Get last n liquidity records by pair id
+            last_bid_ask_ratio = find_sync_last_n_volumes(
+                session,
+                self._processor.pair_id,
+                self._volume_comparative_array_size,
+            )
+
+            session.expunge_all()
+
+        return [liquidity.bid_ask_ratio for liquidity in last_bid_ask_ratio]
 
     def __calculate_deviation(self, average_volume: Decimal) -> Decimal:
         # Calculate avg volume based on n last volumes
@@ -178,15 +223,22 @@ class VolumeWorker(Worker):
 
         self._volume_updates_counter_per_interval += 1
 
+        for price, quantity in {**self._processor.order_book.b}.items():
+            self._summary_bids_volume_per_interval += price * quantity
+
+        for price, quantity in {**self._processor.order_book.a}.items():
+            self._summary_asks_volume_per_interval += price * quantity
+
         # Concat bids with asks and calculate total volume of order_book
-        for price, quantity in {
-            **self._processor.order_book.a,
-            **self._processor.order_book.b,
-        }.items():
-            self._summary_volume_per_interval += price * quantity
+        self._summary_volume_per_interval = (
+            self._summary_bids_volume_per_interval
+            + self._summary_asks_volume_per_interval
+        )
 
     def __clear_volume_stats(self):
         logging.debug("Cleaning volume stats")
 
+        self._summary_bids_volume_per_interval = 0
+        self._summary_asks_volume_per_interval = 0
         self._summary_volume_per_interval = 0
         self._volume_updates_counter_per_interval = 0

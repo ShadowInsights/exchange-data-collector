@@ -33,10 +33,17 @@ def find_sync_last_n_volumes(
 
 
 async def save_volume(
-    session: AsyncSession, avg_volume: int, launch_id: UUID, pair_id: UUID
+    session: AsyncSession,
+    bid_ask_ratio: float,
+    avg_volume: int,
+    launch_id: UUID,
+    pair_id: UUID,
 ) -> Volume:
     liquidity = Volume(
-        average_volume=avg_volume, launch_id=launch_id, pair_id=pair_id
+        bid_ask_ratio=bid_ask_ratio,
+        average_volume=avg_volume,
+        launch_id=launch_id,
+        pair_id=pair_id,
     )
 
     session.add(liquidity)

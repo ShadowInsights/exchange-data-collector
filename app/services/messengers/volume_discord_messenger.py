@@ -19,6 +19,8 @@ class VolumeDiscordMessenger(DiscordMessenger):
         self,
         pair_id: UUID,
         deviation: Decimal,
+        current_bid_ask_ratio: float,
+        previous_bid_ask_ratio: float,
         current_avg_volume: int,
         previous_avg_volume: int,
     ) -> None:
@@ -45,12 +47,22 @@ class VolumeDiscordMessenger(DiscordMessenger):
             f"{add_comma_every_n_symbols(previous_avg_volume)}",
             inline=True,
         )
+        ask_bid_ratio_changes_field = Field(
+            name="Bid & Ask ratio",
+            value=f"Current{add_comma_every_n_symbols(current_bid_ask_ratio)}\nPrevious: "
+            f"{add_comma_every_n_symbols(previous_bid_ask_ratio)}",
+            inline=True,
+        )
 
         # Construct message to send
         message = BaseMessage(
             title=title,
             description=description,
-            fields=[deviation, volume_changes_field],
+            fields=[
+                deviation,
+                volume_changes_field,
+                ask_bid_ratio_changes_field,
+            ],
         )
 
         # Sending message
