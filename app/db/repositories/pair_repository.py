@@ -9,4 +9,4 @@ from app.db.models.pair import PairModel
 async def find_pair_by_id(session: AsyncSession, id: UUID) -> PairModel:
     result = await session.execute(select(PairModel).where(PairModel.id == id))
 
-    return result.scalar_one_or_none()
+    return result.scalar_one()

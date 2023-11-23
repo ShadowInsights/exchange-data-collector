@@ -1,7 +1,7 @@
 import asyncio
-import concurrent.futures
 import copy
 import logging
+from concurrent.futures import Executor, ThreadPoolExecutor
 from typing import Dict, List, Literal, NamedTuple, Set
 
 from _decimal import Decimal
@@ -11,12 +11,15 @@ from app.common.database import get_async_db
 from app.common.processor import Processor
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
 from app.db.repositories.order_book_anomaly_repository import (
-    create_order_book_anomalies, merge_and_cancel_anomalies,
-    merge_and_confirm_anomalies)
-from app.services.collectors.clients.schemas.common import (OrderBook,
-                                                            OrderBookEvent)
+    create_order_book_anomalies,
+    merge_and_cancel_anomalies,
+    merge_and_confirm_anomalies,
+)
+from app.services.collectors.clients.schemas.common import OrderBook
 from app.services.messengers.order_book_discord_messenger import (
-    OrderAnomalyNotification, OrderBookDiscordMessenger)
+    OrderAnomalyNotification,
+    OrderBookDiscordMessenger,
+)
 from app.services.workers.common import Worker
 from app.utils.math_utils import calculate_average_excluding_value_from_sum
 from app.utils.scheduling_utils import SetInterval
@@ -50,8 +53,8 @@ class PositionedOrder(NamedTuple):
 
 
 class ObservingAnomaliesDestiny(NamedTuple):
-    cancelled_anomalies: list[OrderBookAnomalyModel]
-    realized_anomalies: list[OrderBookAnomalyModel]
+    cancelled_anomalies: list[OrderAnomaly]
+    realized_anomalies: list[OrderAnomaly]
 
 
 class OrdersWorker(Worker):
@@ -65,7 +68,7 @@ class OrdersWorker(Worker):
         anomalies_observing_ratio: float = settings.ANOMALIES_OBSERVING_RATIO,
         top_n_orders: int = settings.TOP_N_ORDERS,
         anomalies_significantly_increased_ratio: float = settings.ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO,
-        executor_factory: concurrent.futures.Executor = None,
+        executor_factory: type[Executor] = ThreadPoolExecutor,
         order_anomaly_minimum_liquidity: float = settings.ORDER_ANOMALY_MINIMUM_LIQUIDITY,
         maximum_order_book_anomalies: int = settings.MAXIMUM_ORDER_BOOK_ANOMALIES,
         observing_saved_limit_anomalies_ratio: float = settings.OBSERVING_SAVED_LIMIT_ANOMALIES_RATIO,
@@ -75,7 +78,7 @@ class OrdersWorker(Worker):
         self._detected_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
         self._observing_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
         self._observing_saved_limit_anomalies: Dict[
-            AnomalyKey, OrderBookAnomalyModel
+            AnomalyKey, OrderAnomaly
         ] = {}
         self._orders_anomaly_multiplier = Decimal(order_anomaly_multiplier)
         self._anomalies_detection_ttl = anomalies_detection_ttl
@@ -86,9 +89,7 @@ class OrdersWorker(Worker):
             anomalies_significantly_increased_ratio
         )
         # TODO: add support for different executor types
-        self._executor_factory = (
-            executor_factory or concurrent.futures.ThreadPoolExecutor
-        )
+        self._executor_factory = executor_factory
         self._order_anomaly_minimum_liquidity = Decimal(
             order_anomaly_minimum_liquidity
         )
@@ -98,12 +99,12 @@ class OrdersWorker(Worker):
         )
 
     @SetInterval(settings.ORDERS_WORKER_JOB_INTERVAL)
-    async def run(self, callback_event: asyncio.Event = None) -> None:
+    async def run(self, callback_event: asyncio.Event | None = None) -> None:
         await super().run(callback_event)
         if callback_event:
             callback_event.set()
 
-    async def _run_worker(self, _: asyncio.Event = None) -> None:
+    async def _run_worker(self, _: asyncio.Event | None = None) -> None:
         await self.__process_orders()
 
     async def __process_orders(self) -> None:
@@ -112,15 +113,15 @@ class OrdersWorker(Worker):
         )
 
         order_book = self.__group_orders(
-            copy.deepcopy(self._processor.order_book),
-            self._processor.delimiter,
+            order_book=copy.deepcopy(self._processor.order_book),
+            delimiter=self._processor.delimiter,
         )
 
         await self.__handle_anomalies(order_book)
         await self.__handle_observing_anomalies_destiny(order_book)
 
     def __group_orders(
-        self, order_book: OrderBookEvent, delimiter: Decimal
+        self, order_book: OrderBook, delimiter: Decimal
     ) -> OrderBook:
         return OrderBook(
             a=self.group_order_book(order_book.a, delimiter),
@@ -156,23 +157,21 @@ class OrdersWorker(Worker):
 
         tasks: list[asyncio.Task] = []
         if observing_anomalies_destiny.cancelled_anomalies:
-            cancel_anomalies = self.__cancel_anomalies(
+            await self.__cancel_anomalies(
                 observing_anomalies_destiny.cancelled_anomalies
             )
-            send_anomalies = self.__send_canceled_anomalies(
+            send_anomalies_task = self.__send_canceled_anomalies(
                 observing_anomalies_destiny.cancelled_anomalies
             )
-            tasks.append(cancel_anomalies)
-            tasks.append(send_anomalies)
+            tasks.append(send_anomalies_task)
         if observing_anomalies_destiny.realized_anomalies:
-            confirm_anomalies = self.__confirm_anomalies(
+            await self.__confirm_anomalies(
                 observing_anomalies_destiny.realized_anomalies
             )
-            send_anomalies = self.__send_realized_anomalies(
+            send_anomalies_task = self.__send_realized_anomalies(
                 observing_anomalies_destiny.realized_anomalies
             )
-            tasks.append(confirm_anomalies)
-            tasks.append(send_anomalies)
+            tasks.append(send_anomalies_task)
 
         if tasks:
             await asyncio.gather(*tasks)
@@ -235,23 +234,12 @@ class OrdersWorker(Worker):
         )
 
     async def __save_anomalies(self, anomalies: List[OrderAnomaly]) -> None:
-        order_book_anomalies = [
-            OrderBookAnomalyModel(
-                launch_id=self._processor.launch_id,
-                pair_id=self._processor.pair_id,
-                price=anomaly.price,
-                quantity=anomaly.quantity,
-                order_liquidity=anomaly.order_liquidity,
-                average_liquidity=anomaly.average_liquidity,
-                position=anomaly.position,
-                type=anomaly.type,
-                is_cancelled=(False if anomaly.position == 0 else None),
-            )
-            for anomaly in anomalies
-        ]
+        order_book_anomalies = self.__order_anomaly_to_order_anomaly_model(
+            anomalies
+        )
         async with get_async_db() as session:
             await create_order_book_anomalies(session, order_book_anomalies)
-        for anomaly in order_book_anomalies:
+        for anomaly in anomalies:
             if anomaly.position != 0:
                 self._observing_saved_limit_anomalies[
                     AnomalyKey(anomaly.price, anomaly.type)
@@ -277,20 +265,32 @@ class OrdersWorker(Worker):
         )
 
     async def __cancel_anomalies(
-        self, anomalies_to_cancel: List[OrderBookAnomalyModel]
+        self, anomalies_to_cancel: List[OrderAnomaly]
     ) -> None:
+        anomalies_model_to_cancel = (
+            self.__order_anomaly_to_order_anomaly_model(anomalies_to_cancel)
+        )
+
         async with get_async_db() as session:
-            await merge_and_cancel_anomalies(session, anomalies_to_cancel)
+            await merge_and_cancel_anomalies(
+                session, anomalies_model_to_cancel
+            )
 
     async def __confirm_anomalies(
-        self, anomalies_to_confirm: List[OrderBookAnomalyModel]
+        self, anomalies_to_confirm: List[OrderAnomaly]
     ) -> None:
-        async with get_async_db() as session:
-            await merge_and_confirm_anomalies(session, anomalies_to_confirm)
+        anomalies_model_to_confirm = (
+            self.__order_anomaly_to_order_anomaly_model(anomalies_to_confirm)
+        )
 
-    async def __send_canceled_anomalies(
+        async with get_async_db() as session:
+            await merge_and_confirm_anomalies(
+                session, anomalies_model_to_confirm
+            )
+
+    def __send_canceled_anomalies(
         self, canceled_anomalies: List[OrderAnomaly]
-    ) -> None:
+    ) -> asyncio.Task:
         order_anomaly_notifications = [
             OrderAnomalyNotification(
                 price=anomaly.price,
@@ -302,16 +302,16 @@ class OrdersWorker(Worker):
             )
             for anomaly in canceled_anomalies
         ]
-        asyncio.create_task(
+        return asyncio.create_task(
             self._discord_messenger.send_anomaly_cancellation_notifications(
                 order_anomaly_notifications,
                 self._processor.pair_id,
             )
         )
 
-    async def __send_realized_anomalies(
+    def __send_realized_anomalies(
         self, realized_anomalies: List[OrderAnomaly]
-    ) -> None:
+    ) -> asyncio.Task:
         order_anomaly_notifications = [
             OrderAnomalyNotification(
                 price=anomaly.price,
@@ -323,7 +323,7 @@ class OrdersWorker(Worker):
             )
             for anomaly in realized_anomalies
         ]
-        asyncio.create_task(
+        return asyncio.create_task(
             self._discord_messenger.send_anomaly_realization_notifications(
                 order_anomaly_notifications,
                 self._processor.pair_id,
@@ -574,3 +574,21 @@ class OrdersWorker(Worker):
             anomaly.order_liquidity / cached_volume
             >= self._anomalies_significantly_increased_ratio
         )
+
+    def __order_anomaly_to_order_anomaly_model(
+        self, order_anomalies: list[OrderAnomaly]
+    ) -> list[OrderBookAnomalyModel]:
+        return [
+            OrderBookAnomalyModel(
+                launch_id=self._processor.launch_id,
+                pair_id=self._processor.pair_id,
+                price=anomaly.price,
+                quantity=anomaly.quantity,
+                order_liquidity=anomaly.order_liquidity,
+                average_liquidity=anomaly.average_liquidity,
+                position=anomaly.position,
+                type=anomaly.type,
+                is_cancelled=(False if anomaly.position == 0 else None),
+            )
+            for anomaly in order_anomalies
+        ]

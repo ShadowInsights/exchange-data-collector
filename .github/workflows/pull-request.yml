@@ -1,9 +1,6 @@
 name: Python Tests and Linting
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -39,10 +36,22 @@ jobs:
       - name: Copy .development.env to .env
         run: cp .development.env .env
 
-      - name: Run flake8
+      - name: Sort imports with isort
+        run: |
+          poetry run python -m isort .
+
+      - name: Format with black
+        run: |
+          poetry run python -m black .
+
+      - name: Lint with flake8
         run: |
           poetry run flake8 .
 
-      - name: Run tests
+      - name: Check types with mypy
+        run: |
+          poetry run mypy ./app
+
+      - name: Run unit tests
         run: |
           poetry run pytest

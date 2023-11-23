@@ -13,7 +13,7 @@ async def create_order_book_anomalies(
 
 async def merge_and_cancel_anomalies(
     session: AsyncSession, anomalies_to_cancel: list[OrderBookAnomalyModel]
-):
+) -> None:
     for anomaly in anomalies_to_cancel:
         merged_anomaly = await session.merge(anomaly)
         merged_anomaly.is_cancelled = True
@@ -22,7 +22,7 @@ async def merge_and_cancel_anomalies(
 
 async def merge_and_confirm_anomalies(
     session: AsyncSession, anomalies_to_confirm: list[OrderBookAnomalyModel]
-):
+) -> None:
     for anomaly in anomalies_to_confirm:
         merged_anomaly = await session.merge(anomaly)
         merged_anomaly.is_cancelled = False

@@ -1,4 +1,4 @@
-from _decimal import Decimal
+from _decimal import ROUND_HALF_UP, Decimal
 
 
 def recalculate_round_average(avg: float, counter: int, value: int) -> int:
@@ -35,3 +35,11 @@ def calculate_diff_over_sum(diminished: float, subtrahend: float) -> float:
     assert diminished != 0 and subtrahend != 0
 
     return round((diminished - subtrahend) / (diminished + subtrahend), 2)
+
+
+def round_to_int(number: Decimal | float) -> int:
+    if isinstance(number, float):
+        return int(Decimal(number).to_integral_value(ROUND_HALF_UP))
+
+    if isinstance(number, Decimal):
+        return int(number.to_integral_value(ROUND_HALF_UP))

@@ -6,10 +6,12 @@ from _decimal import Decimal
 
 from app.common.config import settings
 from app.common.processor import Processor
-from app.utils.time_utils import (LONDON_TRADING_SESSION,
-                                  NEW_YORK_TRADING_SESSION,
-                                  TOKYO_TRADING_SESSION,
-                                  is_current_time_inside_trading_sessions)
+from app.utils.time_utils import (
+    LONDON_TRADING_SESSION,
+    NEW_YORK_TRADING_SESSION,
+    TOKYO_TRADING_SESSION,
+    is_current_time_inside_trading_sessions,
+)
 
 trading_sessions = [
     TOKYO_TRADING_SESSION,
@@ -22,7 +24,7 @@ class Worker(ABC):
     def __init__(self, processor: Processor):
         self._processor = processor
 
-    async def run(self, callback_event: asyncio.Event = None) -> None:
+    async def run(self, callback_event: asyncio.Event | None = None) -> None:
         if (
             settings.IS_TRADING_SESSION_VERIFICATION_REQUIRED
             and not is_current_time_inside_trading_sessions(trading_sessions)
@@ -32,7 +34,9 @@ class Worker(ABC):
             await self._run_worker(callback_event)
 
     @abstractmethod
-    def _run_worker(self, callback_event: asyncio.Event = None) -> None:
+    async def _run_worker(
+        self, callback_event: asyncio.Event | None = None
+    ) -> None:
         pass
 
     @staticmethod

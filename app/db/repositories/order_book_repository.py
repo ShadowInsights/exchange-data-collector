@@ -1,3 +1,4 @@
+from typing import Sequence
 from uuid import UUID
 
 from sqlalchemy import DateTime, and_, asc
@@ -12,13 +13,13 @@ async def create_order_book(
     launch_id: UUID,
     stamp_id: int,
     pair_id: UUID,
-    order_book: str,
+    order_book_json: str,
 ) -> OrderBookModel:
     order_book = OrderBookModel(
         launch_id=launch_id,
         stamp_id=stamp_id,
         pair_id=pair_id,
-        order_book=order_book,
+        order_book=order_book_json,
     )
     session.add(order_book)
     return order_book
@@ -29,7 +30,7 @@ async def find_all_between_time_range(
     begin_time: DateTime,
     end_time: DateTime,
     pair_id: UUID,
-) -> list[OrderBookModel]:
+) -> Sequence[OrderBookModel]:
     query = (
         select(OrderBookModel)
         .where(

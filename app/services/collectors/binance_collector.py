@@ -4,10 +4,12 @@ from uuid import UUID
 
 from _decimal import Decimal
 
-from app.services.collectors.clients.binance_http_client import \
-    BinanceHttpClient
-from app.services.collectors.clients.binance_websocket_client import \
-    BinanceWebsocketClient
+from app.services.collectors.clients.binance_http_client import (
+    BinanceHttpClient,
+)
+from app.services.collectors.clients.binance_websocket_client import (
+    BinanceWebsocketClient,
+)
 from app.services.collectors.clients.schemas.common import OrderBookEvent
 from app.services.collectors.common import Collector
 

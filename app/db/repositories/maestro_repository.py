@@ -2,11 +2,13 @@ from datetime import datetime
 from typing import NamedTuple
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.maestro import (MaestroInstanceModel,
-                                   maestro_pair_association)
+from app.db.models.maestro import (
+    MaestroInstanceModel,
+    maestro_pair_association,
+)
 from app.db.models.pair import PairModel
 
 
@@ -52,13 +54,13 @@ async def find_all_not_collecting_pairs_for_update(
     )
     if no_maestro_pairs.scalar_one_or_none():
         query = select(PairModel.id).where(
-            ~PairModel.id.in_(associated_pairs_subquery)
+            ~PairModel.id.in_(select(associated_pairs_subquery))
         )
 
         raws = await session.execute(query.with_for_update())
 
         return PairsForUpdateResult(
-            pair_ids=raws.scalars().all(),
+            pair_ids=[row for row in raws.scalars().all()],
         )
     else:
         oldest_maestro_query = (
@@ -84,7 +86,8 @@ async def find_all_not_collecting_pairs_for_update(
         raws = await session.execute(query.with_for_update())
 
         return CollectingPairsForUpdateResult(
-            pair_ids=raws.scalars().all(), attached_maestro_id=old_maestro_id
+            pair_ids=[row for row in raws.scalars().all()],
+            attached_maestro_id=old_maestro_id,
         )
 
 
@@ -132,11 +135,11 @@ async def delete_maestro_by_id(
     maestro_id: UUID,
     commit: bool = True,
 ) -> None:
-    await session.execute(
-        MaestroInstanceModel.__table__.delete().where(
-            MaestroInstanceModel.id == maestro_id
-        )
+    stmt = delete(MaestroInstanceModel).where(
+        MaestroInstanceModel.id == maestro_id
     )
+
+    await session.execute(stmt)
 
     if commit:
         await session.commit()

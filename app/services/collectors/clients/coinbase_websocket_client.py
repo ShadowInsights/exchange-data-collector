@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import AsyncGenerator, Callable, Union
 
 import websockets
 from _decimal import Decimal
@@ -14,9 +15,9 @@ from app.services.collectors.clients.schemas.coinbase import (
     CoinbaseSnapshotPayload,
 )
 from app.services.collectors.clients.schemas.common import (
+    OrderBookEvent,
     OrderBookSnapshot,
     OrderBookUpdate,
-    OrderBookEvent,
 )
 
 EVENT_TYPE_KEY = "type"
@@ -30,7 +31,7 @@ class CoinbaseWebsocketClient(WebsocketClient):
 
     async def listen_depth_stream(
         self,
-    ):
+    ) -> AsyncGenerator[OrderBookEvent | None, None]:
         async with websockets.connect(self._uri) as websocket:
             ws_payload = CoinbaseSnapshotPayload(
                 product_ids=[self.symbol], channels=[self._channel]
@@ -41,7 +42,10 @@ class CoinbaseWebsocketClient(WebsocketClient):
             async for message in websocket:
                 body = self.__deserialize_message(message=message)
 
-                switch = {
+                if body is None:
+                    continue
+
+                switch: dict[type[CoinbaseOrderBook], Callable] = {
                     CoinbaseOrderBookSnapshot: self.__handle_snapshot,
                     CoinbaseOrderBookDepthUpdate: self.__handle_update,
                 }
@@ -53,9 +57,9 @@ class CoinbaseWebsocketClient(WebsocketClient):
                 else:
                     yield None
 
-                yield None
-
-    def __deserialize_message(self, message: str) -> CoinbaseOrderBook | None:
+    def __deserialize_message(
+        self, message: Union[str, bytes]
+    ) -> CoinbaseOrderBook | None:
         try:
             if message is None:
                 return None
@@ -76,7 +80,7 @@ class CoinbaseWebsocketClient(WebsocketClient):
         return None
 
     def __handle_snapshot(
-        self, body: CoinbaseOrderBook | None
+        self, body: CoinbaseOrderBookSnapshot
     ) -> OrderBookEvent:
         return OrderBookSnapshot(
             a={Decimal(order[0]): Decimal(order[1]) for order in body.asks},
@@ -84,7 +88,7 @@ class CoinbaseWebsocketClient(WebsocketClient):
         )
 
     def __handle_update(
-        self, body: CoinbaseOrderBook | None
+        self, body: CoinbaseOrderBookDepthUpdate
     ) -> OrderBookEvent:
         type_position = 0
         price_position = 1

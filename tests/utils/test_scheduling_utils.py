@@ -5,7 +5,7 @@ from app.utils.scheduling_utils import SetInterval
 
 
 @SetInterval(5)
-async def func(callback_event: asyncio.Event = None):
+async def func(callback_event: asyncio.Event | None = None) -> None:
     if callback_event:
         callback_event.set()
 
@@ -21,7 +21,7 @@ async def test_is_fast_executed_function_invoked_n_times_in_specified_interval(
     mock_sleep: AsyncMock,
     mock_get_is_interrupted: Mock,
     mock_get_current_time: Mock,
-):
+) -> None:
     max_call_counts = 200
     expected_call_counts = 12
     func_time = 3
@@ -56,7 +56,7 @@ async def test_is_long_executed_function_invoked_n_times_in_specified_interval(
     mock_sleep: AsyncMock,
     mock_get_is_interrupted: Mock,
     mock_get_current_time: Mock,
-):
+) -> None:
     max_call_counts = 200
     expected_call_counts = 8
     func_time = 8

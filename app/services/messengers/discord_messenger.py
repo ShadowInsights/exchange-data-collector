@@ -8,17 +8,19 @@ from app.services.messengers.common import BaseMessage, BaseMessenger
 
 
 class DiscordMessenger(BaseMessenger):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.lock = asyncio.Lock()
-        self.webhooks = [
+        self.webhooks: list[AsyncDiscordWebhook] = [
             AsyncDiscordWebhook(
                 webhook_url, rate_limit_retry=True, username="Anomaly Alerting"
             )
             for webhook_url in settings.DISCORD_WEBHOOKS.split(",")
         ]
 
-    async def _send(self, message: BaseMessage, embed_color: int) -> None:
+    async def _send(
+        self, message: BaseMessage, embed_color: str | int
+    ) -> None:
         try:
             async with self.lock:
                 webhook = self.webhooks.pop(0)
@@ -35,7 +37,7 @@ class DiscordMessenger(BaseMessenger):
             logging.error(f"Error while sending alert notification: {error}")
 
     def _generate_message(
-        self, message: BaseMessage, embed_color: int
+        self, message: BaseMessage, embed_color: str | int
     ) -> DiscordEmbed:
         embed = DiscordEmbed(
             title=message.title,

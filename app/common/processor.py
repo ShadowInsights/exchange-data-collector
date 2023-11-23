@@ -3,9 +3,11 @@ from uuid import UUID
 
 from _decimal import Decimal
 
-from app.services.collectors.clients.schemas.common import (EventTypeEnum,
-                                                            OrderBook,
-                                                            OrderBookEvent)
+from app.services.collectors.clients.schemas.common import (
+    EventTypeEnum,
+    OrderBook,
+    OrderBookEvent,
+)
 from app.services.collectors.common import Collector
 from app.utils.event_utils import EventHandler
 
@@ -28,7 +30,7 @@ class Processor:
         self._order_book = OrderBook(a={}, b={})
         self.event_handler = event_handler
 
-    async def run(self):
+    async def run(self) -> None:
         # Open the stream and start the generator for the stream events
         event_generator = self._collector.listen_stream()
 
@@ -48,7 +50,7 @@ class Processor:
                 case _:
                     logging.warning(f"Unrecognised error event {event}")
 
-    def _init_order_book(self, snapshot: OrderBookEvent):
+    def _init_order_book(self, snapshot: OrderBookEvent) -> None:
         logging.debug(
             f"Processing init event {snapshot} [symbol={self.symbol}]"
         )
@@ -57,7 +59,7 @@ class Processor:
 
         logging.info(f"Initial snapshot saved [symbol={self.symbol}]")
 
-    def _update_order_book(self, update_event: OrderBookEvent):
+    def _update_order_book(self, update_event: OrderBookEvent) -> None:
         logging.debug(
             f"Processing update event {update_event} [symbol={self.symbol}]"
         )
@@ -87,25 +89,25 @@ class Processor:
             order_book[price] = quantity
 
     @property
-    def order_book(self):
+    def order_book(self) -> OrderBook:
         return self._order_book
 
     @property
-    def collector(self):
+    def collector(self) -> Collector:
         return self._collector
 
     @property
-    def delimiter(self):
+    def delimiter(self) -> Decimal:
         return self._delimiter
 
     @property
-    def pair_id(self):
+    def pair_id(self) -> UUID:
         return self._pair_id
 
     @property
-    def launch_id(self):
+    def launch_id(self) -> UUID:
         return self._launch_id
 
     @property
-    def symbol(self):
+    def symbol(self) -> str:
         return self._symbol

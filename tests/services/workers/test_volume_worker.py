@@ -27,7 +27,9 @@ class MockCollector(Collector):
             delimiter=delimiter,
         )
 
-    async def _broadcast_stream(self) -> AsyncGenerator[OrderBookEvent, None]:
+    async def _broadcast_stream(
+        self,
+    ) -> AsyncGenerator[OrderBookEvent | None, None]:
         pass
 
 

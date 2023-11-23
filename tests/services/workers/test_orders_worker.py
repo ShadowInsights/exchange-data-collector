@@ -7,14 +7,20 @@ import pytest
 
 from app.common.processor import Processor
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
-from app.services.collectors.clients.schemas.common import (OrderBook,
-                                                            OrderBookEvent)
+from app.services.collectors.clients.schemas.common import (
+    OrderBook,
+    OrderBookEvent,
+)
 from app.services.collectors.common import Collector
-from app.services.messengers.order_book_discord_messenger import \
-    OrderAnomalyNotification
-from app.services.workers.orders_worker import (AnomalyKey, OrderAnomaly,
-                                                OrderAnomalyInTime,
-                                                OrdersWorker)
+from app.services.messengers.order_book_discord_messenger import (
+    OrderAnomalyNotification,
+)
+from app.services.workers.orders_worker import (
+    AnomalyKey,
+    OrderAnomaly,
+    OrderAnomalyInTime,
+    OrdersWorker,
+)
 from app.utils.event_utils import EventHandler
 
 
@@ -1825,29 +1831,21 @@ async def test_non_first_anomaly_did_not_canceled(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(
-            price=Decimal("27500.0"), type="ask"
-        ): OrderBookAnomalyModel(
-            id="aeb91a04-24fb-480f-a13b-42c74d5d797d",
+        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=None,
         ),
-        AnomalyKey(
-            price=Decimal("27000.0"), type="bid"
-        ): OrderBookAnomalyModel(
-            id="ecd0dd4a-c796-457b-87d3-b782777031c5",
+        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=None,
         ),
     }
 
@@ -1922,29 +1920,21 @@ async def test_non_first_anomaly_canceled(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(
-            price=Decimal("27500.0"), type="ask"
-        ): OrderBookAnomalyModel(
-            id="aeb91a04-24fb-480f-a13b-42c74d5d797d",
+        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=None,
         ),
-        AnomalyKey(
-            price=Decimal("27000.0"), type="bid"
-        ): OrderBookAnomalyModel(
-            id="ecd0dd4a-c796-457b-87d3-b782777031c5",
+        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=None,
         ),
     }
 
@@ -2041,29 +2031,21 @@ async def test_valid_anomaly_canceled(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(
-            price=Decimal("27500.0"), type="ask"
-        ): OrderBookAnomalyModel(
-            id="aeb91a04-24fb-480f-a13b-42c74d5d797d",
+        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=None,
         ),
-        AnomalyKey(
-            price=Decimal("27000.0"), type="bid"
-        ): OrderBookAnomalyModel(
-            id="ecd0dd4a-c796-457b-87d3-b782777031c5",
+        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=None,
         ),
     }
 
@@ -2164,29 +2146,21 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(
-            price=Decimal("27500.0"), type="ask"
-        ): OrderBookAnomalyModel(
-            id="aeb91a04-24fb-480f-a13b-42c74d5d797d",
+        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=None,
         ),
-        AnomalyKey(
-            price=Decimal("27000.0"), type="bid"
-        ): OrderBookAnomalyModel(
-            id="ecd0dd4a-c796-457b-87d3-b782777031c5",
+        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=None,
         ),
     }
 
@@ -2297,29 +2271,21 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(
-            price=Decimal("27500.0"), type="ask"
-        ): OrderBookAnomalyModel(
-            id="aeb91a04-24fb-480f-a13b-42c74d5d797d",
+        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=None,
         ),
-        AnomalyKey(
-            price=Decimal("27000.0"), type="bid"
-        ): OrderBookAnomalyModel(
-            id="ecd0dd4a-c796-457b-87d3-b782777031c5",
+        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=None,
         ),
     }
 
@@ -2436,29 +2402,21 @@ async def test_valid_anomaly_first_position_realized(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(
-            price=Decimal("27300.0"), type="ask"
-        ): OrderBookAnomalyModel(
-            id="aeb91a04-24fb-480f-a13b-42c74d5d797d",
+        AnomalyKey(price=Decimal("27300.0"), type="ask"): OrderAnomaly(
             price=Decimal("27300.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("245700.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
             position=2,
             type="ask",
-            is_cancelled=None,
         ),
-        AnomalyKey(
-            price=Decimal("27200.0"), type="bid"
-        ): OrderBookAnomalyModel(
-            id="ecd0dd4a-c796-457b-87d3-b782777031c5",
+        AnomalyKey(price=Decimal("27200.0"), type="bid"): OrderAnomaly(
             price=Decimal("27200.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("244800.00"),
             average_liquidity=Decimal("36100.00"),
             position=2,
             type="bid",
-            is_cancelled=None,
         ),
     }
 

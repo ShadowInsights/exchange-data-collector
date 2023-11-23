@@ -4,7 +4,9 @@ from _decimal import Decimal
 FLOAT_ROUND_REGEX = regex.compile(r"(\.\d*?[1-9])0+$|\.0+$")
 
 
-def add_comma_every_n_symbols(input_value, n=3) -> str:
+def add_comma_every_n_symbols(
+    input_value: int | float | str | Decimal, n: int = 3
+) -> str:
     # Ensure the input is a string
     input_str = str(input_value).strip()
 
@@ -35,7 +37,7 @@ def add_comma_every_n_symbols(input_value, n=3) -> str:
         return int_with_commas
 
 
-def round_decimal_to_first_non_zero(num: Decimal) -> Decimal:
+def round_decimal_to_first_non_zero(num: Decimal) -> str:
     str_num = str(num)
     result = FLOAT_ROUND_REGEX.sub(r"\1", str_num)
 

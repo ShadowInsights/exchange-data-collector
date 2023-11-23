@@ -11,9 +11,11 @@ from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.pair_repository import find_pair_by_id
 from app.services.messengers.common import BaseMessage, Field
 from app.services.messengers.discord_messenger import DiscordMessenger
-from app.utils.string_utils import (add_comma_every_n_symbols,
-                                    round_decimal_to_first_non_zero,
-                                    to_title_case)
+from app.utils.string_utils import (
+    add_comma_every_n_symbols,
+    round_decimal_to_first_non_zero,
+    to_title_case,
+)
 
 
 class OrderAnomalyNotification(NamedTuple):
@@ -26,7 +28,7 @@ class OrderAnomalyNotification(NamedTuple):
 
 
 class OrderBookDiscordMessenger(DiscordMessenger):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     async def _get_exchange_and_pair(
@@ -70,7 +72,7 @@ class OrderBookDiscordMessenger(DiscordMessenger):
         )
 
     async def _send_notification(
-        self, message: BaseMessage, embed_color: int
+        self, message: BaseMessage, embed_color: int | str
     ) -> None:
         await self._send(message=message, embed_color=embed_color)
 
@@ -78,7 +80,7 @@ class OrderBookDiscordMessenger(DiscordMessenger):
         self, anomalies: List[OrderAnomalyNotification], pair_id: UUID
     ) -> None:
         exchange, pair = await self._get_exchange_and_pair(pair_id)
-        formatted_exchange_name = to_title_case(exchange.name)
+        formatted_exchange_name = to_title_case(str(exchange.name))
 
         notification_tasks = []
         for anomaly in anomalies:
@@ -153,10 +155,10 @@ class OrderBookDiscordMessenger(DiscordMessenger):
         anomalies: List[OrderAnomalyNotification],
         pair_id: UUID,
         destiny: str,
-        destiny_color: str,
+        destiny_color: int | str,
     ) -> None:
         exchange, pair = await self._get_exchange_and_pair(pair_id)
-        formatted_exchange_name = to_title_case(exchange.name)
+        formatted_exchange_name = to_title_case(str(exchange.name))
 
         cancellation_tasks = []
         for anomaly in anomalies:

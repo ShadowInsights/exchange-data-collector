@@ -1,22 +1,33 @@
 import json
 import logging
+from typing import AsyncGenerator, Union
 
 import websockets
 
 from app.services.collectors.clients.common import WebsocketClient
-from app.services.collectors.clients.schemas.common import (OrderBookSnapshot,
-                                                            OrderBookUpdate)
+from app.services.collectors.clients.schemas.common import (
+    OrderBookEvent,
+    OrderBookSnapshot,
+    OrderBookUpdate,
+)
 from app.services.collectors.clients.schemas.kraken import (
-    KrakenOrder, KrakenOrderBook, KrakenOrderBookDepthUpdate,
-    KrakenOrderBookSnapshot, KrakenOrdersDict, KrakenSnapshotPayload)
+    KrakenOrder,
+    KrakenOrderBook,
+    KrakenOrderBookDepthUpdate,
+    KrakenOrderBookSnapshot,
+    KrakenOrdersDict,
+    KrakenSnapshotPayload,
+)
 
 
 class KrakenWebsocketClient(WebsocketClient):
-    def __init__(self, symbol: str):
+    def __init__(self, symbol: str) -> None:
         super().__init__(symbol=symbol, symbol_splitter="/")
         self._uri = "wss://ws.kraken.com/"
 
-    async def listen_depth_stream(self):
+    async def listen_depth_stream(
+        self,
+    ) -> AsyncGenerator[OrderBookEvent | None, None]:
         async with websockets.connect(self._uri) as websocket:
             ws_payload = KrakenSnapshotPayload(pair=[self.symbol])
 
@@ -53,7 +64,7 @@ class KrakenWebsocketClient(WebsocketClient):
 
     def __deserialize_message(
         self,
-        message: str,
+        message: Union[str, bytes],
     ) -> KrakenOrderBook | None:
         try:
             if message is None:
@@ -75,7 +86,7 @@ class KrakenWebsocketClient(WebsocketClient):
         return None
 
     def __convert_to_order_book_snapshot(
-        self, body: []
+        self, body: list
     ) -> KrakenOrderBookSnapshot:
         asks = [
             KrakenOrder(price=price, volume=volume, timestamp=timestamp)
@@ -95,7 +106,7 @@ class KrakenWebsocketClient(WebsocketClient):
         )
 
     def __convert_to_order_book_update(
-        self, body: []
+        self, body: list
     ) -> KrakenOrderBookDepthUpdate:
         asks = []
         bids = []

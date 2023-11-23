@@ -17,5 +17,5 @@ class BaseMessage:
 
 class BaseMessenger(ABC):
     @abstractmethod
-    async def _send(self, data: BaseMessage) -> None:
+    async def _send(self, data: BaseMessage, embed_color: int) -> None:
         pass

@@ -18,7 +18,9 @@ class Collector(ABC):
         self.delimiter = delimiter
         self.is_interrupted = False
 
-    async def listen_stream(self) -> AsyncGenerator[OrderBookEvent, None]:
+    async def listen_stream(
+        self,
+    ) -> AsyncGenerator[OrderBookEvent | None, None]:
         logging.info(f"Collecting data for {self.symbol}")
 
         # Open the stream and start the generator for the stream events
@@ -33,5 +35,7 @@ class Collector(ABC):
                 )
 
     @abstractmethod
-    async def _broadcast_stream(self) -> AsyncGenerator[OrderBookEvent, None]:
-        yield
+    async def _broadcast_stream(
+        self,
+    ) -> AsyncGenerator[OrderBookEvent | None, None]:
+        yield None

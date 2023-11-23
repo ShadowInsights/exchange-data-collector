@@ -8,9 +8,9 @@ from app.db.models.exchange import ExchangeModel
 
 async def find_exchange_by_id(
     session: AsyncSession, id: UUID
-) -> ExchangeModel | None:
+) -> ExchangeModel:
     result = await session.execute(
         select(ExchangeModel).where(ExchangeModel.id == id)
     )
 
-    return result.scalar_one_or_none()
+    return result.scalar_one()

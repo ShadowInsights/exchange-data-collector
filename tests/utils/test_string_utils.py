@@ -1,11 +1,13 @@
 from decimal import Decimal
 
-from app.utils.string_utils import (add_comma_every_n_symbols,
-                                    round_decimal_to_first_non_zero,
-                                    to_title_case)
+from app.utils.string_utils import (
+    add_comma_every_n_symbols,
+    round_decimal_to_first_non_zero,
+    to_title_case,
+)
 
 
-def test_add_comma_every_n_symbols():
+def test_add_comma_every_n_symbols() -> None:
     assert add_comma_every_n_symbols(1000) == "1,000"
     assert add_comma_every_n_symbols(1000.01) == "1,000.01"
     assert add_comma_every_n_symbols(1000, 4) == "1000"
@@ -20,13 +22,13 @@ def test_add_comma_every_n_symbols():
     )
 
 
-def test_round_decimal_to_first_non_zero():
+def test_round_decimal_to_first_non_zero() -> None:
     assert round_decimal_to_first_non_zero(Decimal("1.100")) == "1.1"
     assert round_decimal_to_first_non_zero(Decimal("1.12000")) == "1.12"
     assert round_decimal_to_first_non_zero(Decimal("1.0")) == "1"
 
 
-def test_to_title_case():
+def test_to_title_case() -> None:
     assert to_title_case("hello") == "Hello"
     assert to_title_case("HELLO") == "Hello"
     assert to_title_case("hELLo") == "Hello"

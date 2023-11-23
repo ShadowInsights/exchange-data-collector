@@ -3,8 +3,9 @@ from uuid import UUID
 
 from _decimal import Decimal
 
-from app.services.collectors.clients.kraken_websocket_client import \
-    KrakenWebsocketClient
+from app.services.collectors.clients.kraken_websocket_client import (
+    KrakenWebsocketClient,
+)
 from app.services.collectors.clients.schemas.common import OrderBookEvent
 from app.services.collectors.common import Collector
 
@@ -21,6 +22,8 @@ class KrakenCollector(Collector):
         )
         self._ws_client = KrakenWebsocketClient(symbol=symbol)
 
-    async def _broadcast_stream(self) -> AsyncGenerator[OrderBookEvent, None]:
+    async def _broadcast_stream(
+        self,
+    ) -> AsyncGenerator[OrderBookEvent | None, None]:
         async for event in self._ws_client.listen_depth_stream():
             yield event

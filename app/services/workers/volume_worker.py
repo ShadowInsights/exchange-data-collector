@@ -1,22 +1,30 @@
 import asyncio
-import concurrent.futures
 import copy
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures._base import Executor
 
 from _decimal import Decimal
 
 from app.common.config import settings
 from app.common.database import get_async_db, get_sync_db
 from app.common.processor import Processor
-from app.db.repositories.volume_repository import (find_sync_last_n_volumes,
-                                                   save_volume)
+from app.db.repositories.volume_repository import (
+    find_sync_last_n_volumes,
+    save_volume,
+)
 from app.services.collectors.clients.schemas.common import EventTypeEnum
-from app.services.messengers.volume_discord_messenger import \
-    VolumeDiscordMessenger
+from app.services.messengers.volume_discord_messenger import (
+    VolumeDiscordMessenger,
+)
 from app.services.workers.common import Worker
 from app.utils.event_utils import EventHandler
-from app.utils.math_utils import (calculate_avg_by_summary,
-                                  calculate_diff_over_sum, calculate_round_avg)
+from app.utils.math_utils import (
+    calculate_avg_by_summary,
+    calculate_diff_over_sum,
+    calculate_round_avg,
+    round_to_int,
+)
 from app.utils.scheduling_utils import SetInterval
 
 
@@ -26,17 +34,15 @@ class VolumeWorker(Worker):
         processor: Processor,
         discord_messenger: VolumeDiscordMessenger,
         event_handler: EventHandler,
-        volume_anomaly_ratio: Decimal = settings.VOLUME_ANOMALY_RATIO,
+        executor_factory: type[Executor] = ThreadPoolExecutor,
+        volume_anomaly_ratio: Decimal = Decimal(settings.VOLUME_ANOMALY_RATIO),
         volume_comparative_array_size: int = settings.VOLUME_COMPARATIVE_ARRAY_SIZE,
-        executor_factory: concurrent.futures.Executor = None,
     ):
         super().__init__(processor=processor)
         self._event_handler = event_handler
         self._discord_messenger = discord_messenger
         # TODO: add support for different executor types
-        self._executor_factory = (
-            executor_factory or concurrent.futures.ThreadPoolExecutor
-        )
+        self._executor_factory = executor_factory
         self._volume_anomaly_ratio = Decimal(volume_anomaly_ratio)
         self._volume_comparative_array_size = volume_comparative_array_size
         self._last_average_volumes = self._find_last_average_volumes()
@@ -50,12 +56,12 @@ class VolumeWorker(Worker):
         )
 
     @SetInterval(settings.VOLUME_WORKER_JOB_INTERVAL)
-    async def run(self, callback_event: asyncio.Event = None) -> None:
+    async def run(self, callback_event: asyncio.Event | None = None) -> None:
         await super().run(callback_event)
         if callback_event:
             callback_event.set()
 
-    async def _run_worker(self, _: asyncio.Event = None) -> None:
+    async def _run_worker(self, _: asyncio.Event | None = None) -> None:
         logging.debug("Saving liquidity record")
 
         last_bid_ask_ratio = copy.deepcopy(self._last_bid_ask_ratio)
@@ -114,7 +120,7 @@ class VolumeWorker(Worker):
             # Clean volume stats for elapsed time period
             self.__clear_volume_stats()
 
-            return
+            return None
 
         # Check avg volume for anomaly based on last n avg volumes
         deviation = self.__calculate_deviation(average_volume)
@@ -224,10 +230,14 @@ class VolumeWorker(Worker):
         self._volume_updates_counter_per_interval += 1
 
         for price, quantity in {**self._processor.order_book.b}.items():
-            self._summary_bids_volume_per_interval += price * quantity
+            self._summary_bids_volume_per_interval += round_to_int(
+                price * quantity
+            )
 
         for price, quantity in {**self._processor.order_book.a}.items():
-            self._summary_asks_volume_per_interval += price * quantity
+            self._summary_asks_volume_per_interval += round_to_int(
+                price * quantity
+            )
 
         # Concat bids with asks and calculate total volume of order_book
         self._summary_volume_per_interval = (
@@ -235,7 +245,7 @@ class VolumeWorker(Worker):
             + self._summary_asks_volume_per_interval
         )
 
-    def __clear_volume_stats(self):
+    def __clear_volume_stats(self) -> None:
         logging.debug("Cleaning volume stats")
 
         self._summary_bids_volume_per_interval = 0

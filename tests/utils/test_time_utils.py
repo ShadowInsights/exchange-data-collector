@@ -1,15 +1,20 @@
+from datetime import datetime
 from datetime import datetime as original_datetime
 from datetime import time
+from typing import Callable
 from unittest.mock import patch
 
-from app.utils.time_utils import (LONDON_TRADING_SESSION,
-                                  NEW_YORK_TRADING_SESSION,
-                                  TOKYO_TRADING_SESSION, TradingSession,
-                                  get_current_time,
-                                  is_current_time_inside_trading_sessions)
+from app.utils.time_utils import (
+    LONDON_TRADING_SESSION,
+    NEW_YORK_TRADING_SESSION,
+    TOKYO_TRADING_SESSION,
+    TradingSession,
+    get_current_time,
+    is_current_time_inside_trading_sessions,
+)
 
 
-def test_trading_session():
+def test_trading_session() -> None:
     ts1 = TradingSession(time(10, 0), time(12, 0))
     assert ts1.is_time_inside(original_datetime(2022, 1, 1, 10, 30))
     assert not ts1.is_time_inside(original_datetime(2022, 1, 1, 9, 59))
@@ -18,20 +23,20 @@ def test_trading_session():
 
 class MockDateTime:
     @classmethod
-    def utcnow(cls):
+    def utcnow(cls) -> Callable[[], datetime]:
         return cls.mocked_utcnow()
 
     @staticmethod
-    def time(*args, **kwargs):
+    def time(*args: str, **kwargs: int) -> time:
         return original_datetime.time(*args, **kwargs)
 
     @staticmethod
-    def datetime(*args, **kwargs):
+    def datetime(*args: str, **kwargs: int) -> datetime:
         return original_datetime(*args, **kwargs)
 
 
 @patch("app.utils.time_utils.datetime", new=MockDateTime)
-def test_is_current_time_inside_trading_sessions():
+def test_is_current_time_inside_trading_sessions() -> None:
     MockDateTime.mocked_utcnow = lambda: original_datetime(2022, 1, 1, 1, 0)
     assert not is_current_time_inside_trading_sessions(
         [
@@ -69,6 +74,6 @@ def test_is_current_time_inside_trading_sessions():
     )
 
 
-def test_get_current_time():
+def test_get_current_time() -> None:
     result = get_current_time()
     assert isinstance(result, float)

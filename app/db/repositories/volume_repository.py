@@ -1,3 +1,4 @@
+from typing import Sequence
 from uuid import UUID
 
 from sqlalchemy import desc, select
@@ -9,7 +10,7 @@ from app.db.models.volume import Volume
 
 async def find_last_n_volumes(
     session: AsyncSession, pair_id: UUID, amount: int
-) -> list[Volume]:
+) -> Sequence[Volume]:
     result = await session.execute(
         select(Volume)
         .where(Volume.pair_id == pair_id)
@@ -22,7 +23,7 @@ async def find_last_n_volumes(
 
 def find_sync_last_n_volumes(
     session: Session, pair_id: UUID, amount: int
-) -> list[Volume]:
+) -> Sequence[Volume]:
     return (
         session.query(Volume)
         .where(Volume.pair_id == pair_id)

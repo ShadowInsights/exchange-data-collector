@@ -51,7 +51,6 @@ class Maestro:
         self._maestro_max_liveness_gap_minutes = (
             maestro_max_liveness_gap_minutes
         )
-        self._maestro_id: UUID = None
         self._processor_tasks: list[asyncio.Task] = []
 
     async def run(self) -> None:
@@ -62,7 +61,7 @@ class Maestro:
 
     @SetInterval(settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL)
     async def _liveness_updater_loop(
-        self, callback_event: asyncio.Event = None
+        self, callback_event: asyncio.Event | None = None
     ) -> None:
         async with get_async_db() as db:
             await update_maestro_liveness_time(db, self._maestro_id)
@@ -73,7 +72,7 @@ class Maestro:
         async with get_async_db() as db:
             maestro_model = await create_maestro(db, self._launch_id)
 
-        self._maestro_id = maestro_model.id
+        self._maestro_id = UUID(str(maestro_model.id))
 
         logging.info(f"Maestro initialized with id={self._maestro_id}")
 
@@ -132,7 +131,7 @@ class Maestro:
             collector = self._create_collector(
                 exchange_name=exchange.name,
                 launch_id=self._launch_id,
-                pair_id=pair.id,
+                pair_id=UUID(str(pair.id)),
                 symbol=pair.symbol,
                 delimiter=pair.delimiter,
             )
@@ -144,7 +143,7 @@ class Maestro:
                 collector=collector,
                 symbol=pair.symbol,
                 delimiter=pair.delimiter,
-                pair_id=pair.id,
+                pair_id=UUID(str(pair.id)),
             )
 
             task = asyncio.create_task(processor.run())
@@ -160,8 +159,8 @@ class Maestro:
 
     def _create_default_workers(
         self, processor: Processor, event_handler: EventHandler
-    ):
-        default_workers: list[DbWorker | DbWorker | OrdersWorker] = [
+    ) -> None:
+        default_workers: list[DbWorker | VolumeWorker | OrdersWorker] = [
             DbWorker(processor=processor),
             VolumeWorker(
                 processor=processor,

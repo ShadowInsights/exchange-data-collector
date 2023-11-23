@@ -21,14 +21,14 @@ class OrderBookJson:
     b: dict[str, str]
 
 
-def handle_decimal_type(obj) -> str:
+def handle_decimal_type(obj: Decimal | float | int) -> str:
     if isinstance(obj, Decimal):
         return str(obj)
     raise TypeError
 
 
 class DbWorker(Worker):
-    def __init__(self, processor: Processor):
+    def __init__(self, processor: Processor) -> None:
         super().__init__(processor)
         self._stamp_id = 0
 
@@ -38,7 +38,7 @@ class DbWorker(Worker):
         if callback_event:
             callback_event.set()
 
-    async def _run_worker(self, _: asyncio.Event = None) -> None:
+    async def _run_worker(self, _: asyncio.Event | None = None) -> None:
         await self.__db_worker()
 
     async def __db_worker(self) -> None:
@@ -63,7 +63,7 @@ class DbWorker(Worker):
                     self._processor.launch_id,
                     self._stamp_id,
                     self._processor.pair_id,
-                    order_book=order_book_json,
+                    order_book_json=order_book_json,
                 )
 
             # Increment the stamp_id

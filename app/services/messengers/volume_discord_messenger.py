@@ -12,7 +12,7 @@ from app.utils.string_utils import add_comma_every_n_symbols, to_title_case
 
 
 class VolumeDiscordMessenger(DiscordMessenger):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     async def send_notification(
@@ -36,9 +36,9 @@ class VolumeDiscordMessenger(DiscordMessenger):
         else:
             depth_change_vector = "Increased"
 
-        formatted_exchange_name = to_title_case(exchange.name)
+        formatted_exchange_name = to_title_case(str(exchange.name))
         description = f"{depth_change_vector} depth was detected for **{pair.symbol}** on **{formatted_exchange_name}**"
-        deviation = Field(
+        deviation_field = Field(
             name="Deviation", value="{:.2f}".format(deviation), inline=True
         )
         volume_changes_field = Field(
@@ -49,7 +49,7 @@ class VolumeDiscordMessenger(DiscordMessenger):
         )
         ask_bid_ratio_changes_field = Field(
             name="Bid & Ask ratio",
-            value=f"Current{add_comma_every_n_symbols(current_bid_ask_ratio)}\nPrevious: "
+            value=f"Current: {add_comma_every_n_symbols(current_bid_ask_ratio)}\nPrevious: "
             f"{add_comma_every_n_symbols(previous_bid_ask_ratio)}",
             inline=True,
         )
@@ -59,7 +59,7 @@ class VolumeDiscordMessenger(DiscordMessenger):
             title=title,
             description=description,
             fields=[
-                deviation,
+                deviation_field,
                 volume_changes_field,
                 ask_bid_ratio_changes_field,
             ],
