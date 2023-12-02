@@ -3,6 +3,7 @@ name: Build and Deploy to GKE
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
 
 env:
   PROJECT_ID: web3-metrics
@@ -38,6 +39,7 @@ jobs:
       - name: Docker configuration
         run: |-
           echo ${{steps.auth.outputs.access_token}} | docker login -u oauth2accesstoken --password-stdin https://$GAR_LOCATION-docker.pkg.dev
+
       # Get the GKE credentials so we can deploy to the cluster
       - name: Set up GKE credentials
         uses: google-github-actions/get-gke-credentials@v0
@@ -53,11 +55,25 @@ jobs:
             --build-arg GITHUB_SHA="$GITHUB_SHA" \
             --build-arg GITHUB_REF="$GITHUB_REF" \
             .
+
       # Push the Docker image to Google Artifact Registry
       - name: Publish
         run: |-
           docker push "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA"
-      # Set up kustomize
+
+      # Run the Alembic migrations
+      - name: Alembic Migrations
+        run: |-
+          # Replace placeholder in the job template with the actual image path
+          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/alembic-job.template.yml > alembic-job.yml
+
+          # Apply the Kubernetes job
+          kubectl apply -f alembic-job.yml
+
+          # Wait for the migration job to complete
+          kubectl wait --for=condition=complete job/alembic-migration
+
+      # Deploy the Docker image to the GKE cluster
       - name: Deploy
         run: |-
           # Extract container name dynamically
