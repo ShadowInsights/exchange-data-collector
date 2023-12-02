@@ -9,7 +9,7 @@ from app.common.maestro import Maestro
 
 def start_metrics_server() -> None:
     logging.info("Starting metrics server")
-    start_http_server(8080)
+    start_http_server(9010)
     logging.info("Metrics server started")
 
 

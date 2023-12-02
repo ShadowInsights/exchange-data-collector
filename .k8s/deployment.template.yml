@@ -1,15 +1,31 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: exchange-data-collector-alembic-migration
+  name: exchange-data-collector
+  labels:
+    app: exchange-data-collector
 spec:
+  replicas: 7
+  selector:
+    matchLabels:
+      app: exchange-data-collector
   template:
+    metadata:
+      labels:
+        app: exchange-data-collector
     spec:
+      nodeSelector:
+        cloud.google.com/gke-spot: "true"
       containers:
-        - name: alembic
+        - name: exchange-data-collector-container
           image: IMAGE_PLACEHOLDER
-          command: ["alembic"]
-          args: ["upgrade", "head"]
+          resources:
+            limits:
+              cpu: 750m
+              memory: 768Mi
+            requests:
+              cpu: 750m
+              memory: 768Mi
           env:
             - name: POSTGRES_HOST
               valueFrom:
@@ -136,5 +152,3 @@ spec:
                 configMapKeyRef:
                   key: DISCORD_ORDER_BOOK_ANOMALY_REALIZED_EMBED_COLOR
                   name: exchange-data-collector-config
-      restartPolicy: Never
-  backoffLimit: 2

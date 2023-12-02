@@ -67,20 +67,23 @@ jobs:
           # Replace placeholder in the job template with the actual image path
           sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/alembic-job.template.yml > alembic-job.yml
 
+          # Delete the existing job if it exists
+          kubectl delete job exchange-data-collector-alembic-migration --ignore-not-found
+
           # Apply the Kubernetes job
           kubectl apply -f alembic-job.yml
 
           # Wait for the migration job to complete
-          kubectl wait --for=condition=complete job/alembic-migration
+          kubectl wait --for=condition=complete job/exchange-data-collector-alembic-migration --timeout=120s
 
       # Deploy the Docker image to the GKE cluster
       - name: Deploy
         run: |-
-          # Extract container name dynamically
-          CONTAINER_NAME=$(kubectl get deployment $DEPLOYMENT_NAME -o=jsonpath='{.spec.template.spec.containers[0].name}')
+          # Replace placeholder in the deployment template with the actual image path
+          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/deployment.template.yml > deployment.yml
 
-          # Update the Deployment with the new image
-          kubectl set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA
+          # Apply the Kubernetes deployment
+          kubectl apply -f deployment.yml
 
           # Check the rollout status
           kubectl rollout status deployment/$DEPLOYMENT_NAME

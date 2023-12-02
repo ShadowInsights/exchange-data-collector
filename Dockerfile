@@ -1,5 +1,3 @@
-# Use an official lightweight Python image.
-# https://hub.docker.com/_/python
 FROM python:3.12-slim as builder
 
 # Set environment variables
@@ -32,6 +30,9 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONPATH=/home/app
 
+# Install alembic
+RUN pip install alembic
+
 # Create directory for the app user
 RUN mkdir -p /home/app
 
@@ -45,6 +46,8 @@ WORKDIR /home/app
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /app /app
 COPY ./app /home/app/app
+COPY ./alembic /home/app/alembic
+COPY alembic.ini /home/app/alembic.ini
 
 # Change to a non-root user
 USER app
