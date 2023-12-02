@@ -11,7 +11,9 @@ from app.common.database import BaseModel
 class PairModel(BaseModel):
     __tablename__ = "pairs"
 
-    symbol: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    symbol: Mapped[str] = mapped_column(
+        String, nullable=False, index=True, unique=True
+    )
     delimiter: Mapped[Decimal] = mapped_column(DECIMAL, nullable=False)
     exchange_id: Mapped[UUID] = mapped_column(
         pg_UUID(as_uuid=True), ForeignKey("exchanges.id"), nullable=False
