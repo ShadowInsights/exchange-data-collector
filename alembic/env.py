@@ -12,6 +12,7 @@ from app.db.models.order_book import OrderBookModel
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
 from app.db.models.pair import PairModel
 from app.db.models.volume import Volume
+from app.db.models.orders_anomalies_summary import OrdersAnomaliesSummaryModel
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

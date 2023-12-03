@@ -27,10 +27,14 @@ from app.services.collectors.kraken_collector import KrakenCollector
 from app.services.messengers.order_book_discord_messenger import (
     OrderBookDiscordMessenger,
 )
-from app.services.messengers.volume_discord_messenger import (
-    VolumeDiscordMessenger,
+from app.services.messengers.orders_anomalies_summary_discord_messenger import (
+    OrdersAnomaliesSummaryDiscordMessenger,
 )
+from app.services.messengers.volume_discord_messenger import VolumeDiscordMessenger
 from app.services.workers.db_worker import DbWorker
+from app.services.workers.orders_anomalies_summary_worker import (
+    OrdersAnomaliesSummaryWorker,
+)
 from app.services.workers.orders_worker import OrdersWorker
 from app.services.workers.volume_worker import VolumeWorker
 from app.utils.event_utils import EventHandler
@@ -90,7 +94,7 @@ class Maestro:
                         db,
                         datetime.utcnow()
                         - timedelta(
-                            minutes=self._maestro_max_liveness_gap_minutes
+                            seconds=self._maestro_max_liveness_gap_minutes
                         ),
                     )
                     if len(result.pair_ids) == 0:
@@ -160,7 +164,7 @@ class Maestro:
     def _create_default_workers(
         self, processor: Processor, event_handler: EventHandler
     ) -> None:
-        default_workers: list[DbWorker | VolumeWorker | OrdersWorker] = [
+        default_workers: list[DbWorker | VolumeWorker | OrdersWorker | OrdersAnomaliesSummaryWorker] = [
             DbWorker(processor=processor),
             VolumeWorker(
                 processor=processor,
@@ -171,6 +175,7 @@ class Maestro:
                 processor=processor,
                 discord_messenger=OrderBookDiscordMessenger(),
             ),
+            OrdersAnomaliesSummaryWorker(processor=processor, discord_messenger=OrdersAnomaliesSummaryDiscordMessenger()),
         ]
 
         for worker in default_workers:

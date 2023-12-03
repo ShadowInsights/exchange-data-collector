@@ -9,14 +9,9 @@ from _decimal import Decimal
 from app.common.config import settings
 from app.common.database import get_async_db, get_sync_db
 from app.common.processor import Processor
-from app.db.repositories.volume_repository import (
-    find_sync_last_n_volumes,
-    save_volume,
-)
+from app.db.repositories.volume_repository import find_sync_last_n_volumes, save_volume
 from app.services.collectors.clients.schemas.common import EventTypeEnum
-from app.services.messengers.volume_discord_messenger import (
-    VolumeDiscordMessenger,
-)
+from app.services.messengers.volume_discord_messenger import VolumeDiscordMessenger
 from app.services.workers.common import Worker
 from app.utils.event_utils import EventHandler
 from app.utils.math_utils import (

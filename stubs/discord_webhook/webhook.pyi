@@ -4,8 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import requests
 from _typeshed import Incomplete
 
-from .webhook_exceptions import \
-    ColorNotInRangeException as ColorNotInRangeException
+from .webhook_exceptions import ColorNotInRangeException as ColorNotInRangeException
 
 logger: Incomplete
 
@@ -22,6 +21,7 @@ class DiscordEmbed:
     title: Optional[str]
     url: Optional[str]
     video: Optional[Dict[str, Optional[Union[str, int]]]]
+
     def __init__(
         self,
         title: Optional[str] = ...,

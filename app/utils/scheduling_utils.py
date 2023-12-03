@@ -15,7 +15,7 @@ class SetInterval:
     ) -> Callable[..., Coroutine[Any, Any, None]]:
         async def wrapper(*args: str, **kwargs: int) -> None:
             await asyncio.sleep(self.interval_time)
-            while self.get_is_interrupted() is not True:
+            while not self.get_is_interrupted():
                 try:
                     logging.debug("Worker function cycle started")
 
@@ -28,11 +28,12 @@ class SetInterval:
                     await callback_event.wait()
                     callback_event.clear()
 
+                    await task
+
                     time_spent = get_current_time() - start_time
                     if time_spent < self.interval_time:
                         await asyncio.sleep(self.interval_time - time_spent)
                     else:
-                        await task
                         logging.warn(
                             f"Active work took longer than the interval time: {time_spent} seconds"
                         )

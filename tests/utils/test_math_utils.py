@@ -1,8 +1,9 @@
-from _decimal import Decimal
+from decimal import Decimal
 
 from app.utils.math_utils import (
     calculate_diff_over_sum,
     calculate_round_avg,
+    numbers_have_same_sign,
     recalculate_round_average,
     round_to_int,
 )
@@ -18,6 +19,14 @@ def test_round_calc_avg() -> None:
     assert calculate_round_avg([10, 20, 30], 3) == 20
     assert calculate_round_avg([10, 20], 2) == 15
     assert calculate_round_avg([10, 20, 30, 40], 4) == 25
+
+
+def test_numbers_have_same_sign():
+    assert numbers_have_same_sign([1, 2, 3]) is True
+    assert numbers_have_same_sign([-1, -2, -3]) is True
+    assert numbers_have_same_sign([1, -2, 3]) is False
+    assert numbers_have_same_sign([-1, 2, -3]) is False
+    assert numbers_have_same_sign([]) is True
 
 
 def test_calculate_diff_over_sum() -> None:

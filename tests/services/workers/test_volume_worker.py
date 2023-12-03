@@ -179,7 +179,6 @@ async def test_inflow_volume_anomaly_detection(
     volume_anomaly_notification = (
         mock_volume_discord_messenger.send_notification.call_args[1]
     )
-    print(mock_volume_discord_messenger.send_notification.call_args[1])
     expected_notification = {
         "pair_id": UUID("d8f4b7c5-5d9c-4b9c-8b3b-9c0c5d9f4b7c"),
         "deviation": expected_deviation,

@@ -1,4 +1,5 @@
-from _decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal
+from typing import List, Union
 
 
 def recalculate_round_average(avg: float, counter: int, value: int) -> int:
@@ -29,6 +30,12 @@ def calculate_avg_by_summary(summary: int, counter: int) -> int:
     assert counter != 0
 
     return round(summary / counter)
+
+
+def numbers_have_same_sign(numbers: List[Union[int, float, Decimal]]) -> bool:
+    if not numbers:
+        return True
+    return all(n >= 0 for n in numbers) or all(n < 0 for n in numbers)
 
 
 def calculate_diff_over_sum(diminished: float, subtrahend: float) -> float:

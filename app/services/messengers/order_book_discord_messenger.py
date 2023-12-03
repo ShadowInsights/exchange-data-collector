@@ -31,46 +31,6 @@ class OrderBookDiscordMessenger(DiscordMessenger):
     def __init__(self) -> None:
         super().__init__()
 
-    async def _get_exchange_and_pair(
-        self, pair_id: UUID
-    ) -> Tuple[ExchangeModel, PairModel]:
-        async with get_async_db() as session:
-            pair = await find_pair_by_id(session, id=pair_id)
-            exchange = await find_exchange_by_id(session, id=pair.exchange_id)
-        return exchange, pair
-
-    def _format_anomaly_fields(
-        self, anomaly: OrderAnomalyNotification
-    ) -> Tuple[str, str, str, str]:
-        formatted_price = add_comma_every_n_symbols(
-            round_decimal_to_first_non_zero(anomaly.price)
-        )
-        formatted_quantity = add_comma_every_n_symbols(
-            f"{anomaly.quantity: .2f}"
-        )
-        formatted_liquidity = add_comma_every_n_symbols(
-            f"{anomaly.average_liquidity: .2f}"
-        )
-        formatted_order_liquidity = add_comma_every_n_symbols(
-            f"{anomaly.order_liquidity: .2f}"
-        )
-
-        return (
-            formatted_price,
-            formatted_quantity,
-            formatted_liquidity,
-            formatted_order_liquidity,
-        )
-
-    def _create_message(
-        self, title: str, description: str, fields: List[Field]
-    ) -> BaseMessage:
-        return BaseMessage(
-            title=title,
-            description=description,
-            fields=fields,
-        )
-
     async def _send_notification(
         self, message: BaseMessage, embed_color: int | str
     ) -> None:
@@ -205,3 +165,43 @@ class OrderBookDiscordMessenger(DiscordMessenger):
             )
 
         await gather(*cancellation_tasks)
+
+    async def _get_exchange_and_pair(
+        self, pair_id: UUID
+    ) -> Tuple[ExchangeModel, PairModel]:
+        async with get_async_db() as session:
+            pair = await find_pair_by_id(session, id=pair_id)
+            exchange = await find_exchange_by_id(session, id=pair.exchange_id)
+        return exchange, pair
+
+    def _create_message(
+        self, title: str, description: str, fields: List[Field]
+    ) -> BaseMessage:
+        return BaseMessage(
+            title=title,
+            description=description,
+            fields=fields,
+        )
+
+    def _format_anomaly_fields(
+        self, anomaly: OrderAnomalyNotification
+    ) -> Tuple[str, str, str, str]:
+        formatted_price = add_comma_every_n_symbols(
+            round_decimal_to_first_non_zero(anomaly.price)
+        )
+        formatted_quantity = add_comma_every_n_symbols(
+            f"{anomaly.quantity: .2f}"
+        )
+        formatted_liquidity = add_comma_every_n_symbols(
+            f"{anomaly.average_liquidity: .2f}"
+        )
+        formatted_order_liquidity = add_comma_every_n_symbols(
+            f"{anomaly.order_liquidity: .2f}"
+        )
+
+        return (
+            formatted_price,
+            formatted_quantity,
+            formatted_liquidity,
+            formatted_order_liquidity,
+        )
