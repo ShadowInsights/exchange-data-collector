@@ -20,12 +20,9 @@ spec:
         - name: exchange-data-collector-container
           image: IMAGE_PLACEHOLDER
           resources:
-            limits:
-              cpu: 750m
-              memory: 768Mi
             requests:
-              cpu: 750m
-              memory: 768Mi
+              cpu: 500m
+              memory: 512Mi
           env:
             - name: POSTGRES_HOST
               valueFrom:

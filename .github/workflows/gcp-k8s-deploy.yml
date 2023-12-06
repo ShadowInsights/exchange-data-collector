@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: web3-metrics
-  GAR_LOCATION: asia-southeast1
-  GKE_CLUSTER: development-cluster-1
-  GKE_ZONE: asia-southeast1
+  PROJECT_ID: lumenus-407114
+  GAR_LOCATION: us-central1
+  GKE_CLUSTER: lumenus-29u9-usc1
+  GKE_ZONE: us-central1
   DEPLOYMENT_NAME: exchange-data-collector
   REPOSITORY: exchange-data-collector
   IMAGE: exchange-data-collector
@@ -65,13 +65,13 @@ jobs:
       - name: Alembic Migrations
         run: |-
           # Replace placeholder in the job template with the actual image path
-          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/alembic-job.template.yml > alembic-job.yml
+          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/alembic-job.template.yml > .k8s/alembic-job.yml
 
           # Delete the existing job if it exists
           kubectl delete job exchange-data-collector-alembic-migration --ignore-not-found
 
           # Apply the Kubernetes job
-          kubectl apply -f alembic-job.yml
+          kubectl apply -f .k8s/alembic-job.yml
 
           # Wait for the migration job to complete
           kubectl wait --for=condition=complete job/exchange-data-collector-alembic-migration --timeout=120s
@@ -80,10 +80,10 @@ jobs:
       - name: Deploy
         run: |-
           # Replace placeholder in the deployment template with the actual image path
-          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/deployment.template.yml > deployment.yml
+          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/templates/deployment.template.yml > .k8s/deployment.yml
 
           # Apply the Kubernetes deployment
-          kubectl apply -f deployment.yml
+          kubectl apply -f .k8s/deployment.yml
 
           # Check the rollout status
           kubectl rollout status deployment/$DEPLOYMENT_NAME
