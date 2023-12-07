@@ -159,3 +159,18 @@ spec:
                 configMapKeyRef:
                   key: TELEGRAM_CHAT_IDS
                   name: exchange-data-collector-config
+            - name: ORDERS_ANOMALIES_SUMMARY_RATIO
+              valueFrom:
+                configMapKeyRef:
+                  key: ORDERS_ANOMALIES_SUMMARY_RATIO
+                  name: exchange-data-collector-config
+            - name: ORDERS_ANOMALIES_SUMMARY_COMPARATIVE_ARRAY_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  key: ORDERS_ANOMALIES_SUMMARY_COMPARATIVE_ARRAY_SIZE
+                  name: exchange-data-collector-config
+            - name: DISCORD_ORDER_ANOMALIES_SUMMARY_EMBED_COLOR
+              valueFrom:
+                configMapKeyRef:
+                  key: DISCORD_ORDER_ANOMALIES_SUMMARY_EMBED_COLOR
+                  name: exchange-data-collector-config
