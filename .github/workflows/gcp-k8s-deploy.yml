@@ -65,7 +65,7 @@ jobs:
       - name: Alembic Migrations
         run: |-
           # Replace placeholder in the job template with the actual image path
-          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/alembic-job.template.yml > .k8s/alembic-job.yml
+          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/templates/alembic-job.template.yml > .k8s/alembic-job.yml
 
           # Delete the existing job if it exists
           kubectl delete job exchange-data-collector-alembic-migration --ignore-not-found
