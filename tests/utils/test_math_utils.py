@@ -2,10 +2,12 @@ from decimal import Decimal
 
 from app.utils.math_utils import (
     calculate_diff_over_sum,
-    calculate_round_avg,
+    calculate_int_average,
     numbers_have_same_sign,
     recalculate_round_average,
     round_to_int,
+    calculate_decimal_average,
+    calculate_decimal_ratio,
 )
 
 
@@ -15,10 +17,20 @@ def test_round_recalc_avg() -> None:
     assert recalculate_round_average(20, 4, 30) == 22
 
 
-def test_round_calc_avg() -> None:
-    assert calculate_round_avg([10, 20, 30], 3) == 20
-    assert calculate_round_avg([10, 20], 2) == 15
-    assert calculate_round_avg([10, 20, 30, 40], 4) == 25
+def test_calculate_int_avg() -> None:
+    assert calculate_int_average([10, 20, 30], 3) == 20
+    assert calculate_int_average([10, 20], 2) == 15
+    assert calculate_int_average([10, 20, 30, 40], 4) == 25
+
+
+def test_calculate_decimal_avg() -> None:
+    assert calculate_decimal_average([10.1, 5.9912, 221.231], 3) == Decimal(
+        "79.11"
+    )
+    assert calculate_decimal_average([4.322, 221.57], 2) == Decimal("112.95")
+    assert calculate_decimal_average(
+        [4.322, 221.57, 32.123, 3121.11], 4
+    ) == Decimal("844.78")
 
 
 def test_numbers_have_same_sign():
@@ -30,9 +42,19 @@ def test_numbers_have_same_sign():
 
 
 def test_calculate_diff_over_sum() -> None:
-    assert calculate_diff_over_sum(10, 20) == -0.33
-    assert calculate_diff_over_sum(0.5, 1.5) == -0.5
-    assert calculate_diff_over_sum(25, 15) == 0.25
+    assert calculate_diff_over_sum(10, 20) == Decimal("-0.33")
+    assert calculate_diff_over_sum(0.5, 1.5) == Decimal("-0.5")
+    assert calculate_diff_over_sum(25, 15) == Decimal("0.25")
+
+
+def test_calculate_decimal_ration() -> None:
+    assert calculate_decimal_ratio(Decimal("5"), Decimal("2")) == Decimal(
+        "2.50"
+    )
+    assert calculate_decimal_ratio(
+        Decimal("123.562"), Decimal("577.11")
+    ) == Decimal("0.21")
+    assert calculate_decimal_ratio(Decimal("0"), Decimal("2")) == Decimal("0")
 
 
 def test_decimal_to_int() -> None:

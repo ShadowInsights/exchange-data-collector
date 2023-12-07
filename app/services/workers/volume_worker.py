@@ -9,15 +9,22 @@ from _decimal import Decimal
 from app.common.config import settings
 from app.common.database import get_async_db, get_sync_db
 from app.common.processor import Processor
-from app.db.repositories.volume_repository import find_sync_last_n_volumes, save_volume
+from app.db.repositories.volume_repository import (
+    find_sync_last_n_volumes,
+    save_volume,
+)
 from app.services.collectors.clients.schemas.common import EventTypeEnum
-from app.services.messengers.volume_discord_messenger import VolumeDiscordMessenger
+from app.services.messengers.volume_messenger import (
+    VolumeMessenger,
+    VolumeNotification,
+)
 from app.services.workers.common import Worker
 from app.utils.event_utils import EventHandler
 from app.utils.math_utils import (
     calculate_avg_by_summary,
+    calculate_decimal_average,
     calculate_diff_over_sum,
-    calculate_round_avg,
+    calculate_int_average,
     round_to_int,
 )
 from app.utils.scheduling_utils import SetInterval
@@ -27,25 +34,25 @@ class VolumeWorker(Worker):
     def __init__(
         self,
         processor: Processor,
-        discord_messenger: VolumeDiscordMessenger,
         event_handler: EventHandler,
+        messengers: list[VolumeMessenger] = [],
         executor_factory: type[Executor] = ThreadPoolExecutor,
         volume_anomaly_ratio: Decimal = Decimal(settings.VOLUME_ANOMALY_RATIO),
         volume_comparative_array_size: int = settings.VOLUME_COMPARATIVE_ARRAY_SIZE,
     ):
         super().__init__(processor=processor)
         self._event_handler = event_handler
-        self._discord_messenger = discord_messenger
+        self._messengers = messengers
         # TODO: add support for different executor types
         self._executor_factory = executor_factory
         self._volume_anomaly_ratio = Decimal(volume_anomaly_ratio)
         self._volume_comparative_array_size = volume_comparative_array_size
         self._last_average_volumes = self._find_last_average_volumes()
-        self._last_bid_ask_ratio = self._find_last_bid_ask_ratio()
-        self._summary_asks_volume_per_interval = 0
-        self._summary_bids_volume_per_interval = 0
-        self._summary_volume_per_interval = 0
-        self._volume_updates_counter_per_interval = 0
+        self._last_bid_ask_ratio: list[float] = self._find_last_bid_ask_ratio()
+        self._summary_asks_volume_per_interval: int = 0
+        self._summary_bids_volume_per_interval: int = 0
+        self._summary_volume_per_interval: int = 0
+        self._volume_updates_counter_per_interval: int = 0
         self._event_handler.on(
             EventTypeEnum.UPDATE.value, self.__update_summary_volume
         )
@@ -92,12 +99,17 @@ class VolumeWorker(Worker):
 
         # Send alert notification if deviation is critical
         if deviation:
-            self.__send_notification(
+            await self._send_notification(
                 deviation=deviation,
-                bid_ask_ratio=bid_ask_ratio,
-                last_bid_ask_ratio=last_bid_ask_ratio,
+                bid_ask_ratio=Decimal(bid_ask_ratio),
+                previous_bid_ask_ratio=calculate_decimal_average(
+                    last_bid_ask_ratio, self._volume_comparative_array_size
+                ),
                 average_volume=average_volume,
-                last_average_volumes=last_avg_volumes,
+                previous_average_volume=calculate_int_average(
+                    last_avg_volumes,
+                    self._volume_comparative_array_size,
+                ),
             )
 
     def __perform_anomaly_analysis(
@@ -137,34 +149,36 @@ class VolumeWorker(Worker):
 
         return result
 
-    def __send_notification(
+    async def _send_notification(
         self,
         deviation: Decimal,
-        bid_ask_ratio: float,
-        last_bid_ask_ratio: list[float],
+        bid_ask_ratio: Decimal,
+        previous_bid_ask_ratio: Decimal,
         average_volume: int,
-        last_average_volumes: list[int],
+        previous_average_volume: int,
     ) -> None:
-        asyncio.create_task(
-            self._discord_messenger.send_notification(
-                pair_id=self._processor.pair_id,
-                deviation=deviation,
-                current_bid_ask_ratio=bid_ask_ratio,
-                previous_bid_ask_ratio=round(
-                    sum(last_bid_ask_ratio)
-                    / self._volume_comparative_array_size,
-                    2,
-                ),
-                current_avg_volume=round(average_volume),
-                previous_avg_volume=calculate_round_avg(
-                    last_average_volumes,
-                    self._volume_comparative_array_size,
-                ),
-            )
+        tasks = []
+
+        notification = VolumeNotification(
+            pair_id=self._processor.pair_id,
+            deviation=deviation,
+            current_bid_ask_ratio=bid_ask_ratio,
+            previous_bid_ask_ratio=previous_bid_ask_ratio,
+            current_avg_volume=average_volume,
+            previous_avg_volume=previous_average_volume,
         )
 
+        for messenger in self._messengers:
+            tasks.append(
+                asyncio.create_task(
+                    messenger.send_notification(notification=notification)
+                )
+            )
+
+        await asyncio.gather(*tasks)
+
     async def _save_liquidity_record(
-        self, avg_volume: int, bid_ask_ratio: float
+        self, avg_volume: int, bid_ask_ratio: Decimal
     ) -> None:
         async with get_async_db() as session:
             # Save  runtime liquidity record
@@ -205,7 +219,7 @@ class VolumeWorker(Worker):
 
     def __calculate_deviation(self, average_volume: Decimal) -> Decimal:
         # Calculate avg volume based on n last volumes
-        common_avg_volume = calculate_round_avg(
+        common_avg_volume = calculate_int_average(
             value_arr=self._last_average_volumes,
             counter=self._volume_comparative_array_size,
         )

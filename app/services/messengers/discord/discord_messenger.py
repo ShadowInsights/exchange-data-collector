@@ -18,9 +18,8 @@ class DiscordMessenger(BaseMessenger):
             for webhook_url in settings.DISCORD_WEBHOOKS.split(",")
         ]
 
-    async def _send(
-        self, message: BaseMessage, embed_color: str | int
-    ) -> None:
+    async def _send(self, message: BaseMessage, **kwargs: str | int) -> None:
+        embed_color = kwargs.get("embed_color")
         try:
             async with self.lock:
                 webhook = self.webhooks.pop(0)
@@ -37,8 +36,9 @@ class DiscordMessenger(BaseMessenger):
             logging.error(f"Error while sending alert notification: {error}")
 
     def _generate_message(
-        self, message: BaseMessage, embed_color: str | int
+        self, message: BaseMessage, **kwargs: str | int | None
     ) -> DiscordEmbed:
+        embed_color = kwargs.get("embed_color")
         embed = DiscordEmbed(
             title=message.title,
             description=message.description,

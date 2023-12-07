@@ -6,10 +6,24 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, create_engine, text
 from sqlalchemy.dialects.postgresql import UUID as pg_UUID
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    Session,
+    mapped_column,
+    sessionmaker,
+)
 
-from app.common.config import DB_CONNECTION_STRING, DB_CONNECTION_STRING_ASYNC, settings
+from app.common.config import (
+    DB_CONNECTION_STRING,
+    DB_CONNECTION_STRING_ASYNC,
+    settings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +71,9 @@ def get_sync_db() -> Iterator[Session]:
 
 
 class BaseModel(DeclarativeBase):
-    id: Mapped[UUID] = mapped_column(pg_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        pg_UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=text("current_timestamp(0)")
     )

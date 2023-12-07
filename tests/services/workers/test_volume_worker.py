@@ -56,7 +56,7 @@ def collector() -> Collector:
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeDiscordMessenger.send_notification",
+    "app.services.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
@@ -75,7 +75,7 @@ async def test_non_anomaly_anomaly(
     mock_save_volume: AsyncMock,
     mock_find_last_bid_ask_ratio: Mock,
     mock_find_last_average_volumes: Mock,
-    mock_volume_discord_messenger: AsyncMock,
+    mock_send_notification: AsyncMock,
     processor: Processor,
 ) -> None:
     expected_average_volume = 5000
@@ -96,7 +96,7 @@ async def test_non_anomaly_anomaly(
     worker = VolumeWorker(
         processor=processor,
         event_handler=EventHandler(),
-        discord_messenger=mock_volume_discord_messenger,
+        messengers=[],
         volume_comparative_array_size=volume_comparative_array_size,
         volume_anomaly_ratio=volume_anomaly_ratio,
     )
@@ -109,7 +109,7 @@ async def test_non_anomaly_anomaly(
         == expected_average_volume
     )
 
-    assert mock_volume_discord_messenger.send_notification.call_count == 0
+    assert mock_send_notification.call_count == 0
 
     assert worker._summary_volume_per_interval == 0
     assert worker._volume_updates_counter_per_interval == 0
@@ -124,7 +124,7 @@ async def test_non_anomaly_anomaly(
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeDiscordMessenger.send_notification",
+    "app.services.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
@@ -143,12 +143,12 @@ async def test_inflow_volume_anomaly_detection(
     mock_save_volume: AsyncMock,
     mock_find_last_bid_ask_ratio: Mock,
     mock_find_last_average_volumes: Mock,
-    mock_volume_discord_messenger: AsyncMock,
+    mock_send_notification: AsyncMock,
     processor: Processor,
 ) -> None:
     expected_average_volume = 40
     mock_find_last_average_volumes.return_value = [10, 20, 30]
-    mock_find_last_bid_ask_ratio.return_value = [-0.10, 0.10, 0.00]
+    mock_find_last_bid_ask_ratio.return_value = [-0.20, 0.10, 0.00]
 
     volume_comparative_array_size = 3
     volume_anomaly_ratio = Decimal(2)
@@ -158,7 +158,7 @@ async def test_inflow_volume_anomaly_detection(
     worker = VolumeWorker(
         processor=processor,
         event_handler=EventHandler(),
-        discord_messenger=mock_volume_discord_messenger,
+        messengers=[],
         volume_comparative_array_size=volume_comparative_array_size,
         volume_anomaly_ratio=volume_anomaly_ratio,
     )
@@ -175,17 +175,14 @@ async def test_inflow_volume_anomaly_detection(
     assert worker._volume_updates_counter_per_interval == 0
 
     expected_deviation = 2.0
-    assert mock_volume_discord_messenger.send_notification.call_count == 1
-    volume_anomaly_notification = (
-        mock_volume_discord_messenger.send_notification.call_args[1]
-    )
+    assert mock_send_notification.call_count == 1
+    volume_anomaly_notification = mock_send_notification.call_args[1]
     expected_notification = {
-        "pair_id": UUID("d8f4b7c5-5d9c-4b9c-8b3b-9c0c5d9f4b7c"),
+        "average_volume": expected_average_volume,
+        "bid_ask_ratio": Decimal("0"),
         "deviation": expected_deviation,
-        "current_bid_ask_ratio": 0.0,
-        "previous_bid_ask_ratio": 0.0,
-        "current_avg_volume": expected_average_volume,
-        "previous_avg_volume": 20,
+        "previous_average_volume": 20,
+        "previous_bid_ask_ratio": Decimal("-0.03"),
     }
 
     assert volume_anomaly_notification == expected_notification
@@ -194,7 +191,7 @@ async def test_inflow_volume_anomaly_detection(
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeDiscordMessenger.send_notification",
+    "app.services.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
@@ -213,7 +210,7 @@ async def test_outflow_volume_anomaly_detection(
     mock_save_volume: AsyncMock,
     mock_find_last_bid_ask_ratio: Mock,
     mock_find_last_average_volumes: Mock,
-    mock_volume_discord_messenger: AsyncMock,
+    mock_send_notification: AsyncMock,
     processor: Processor,
 ) -> None:
     expected_average_volume = 200
@@ -228,7 +225,7 @@ async def test_outflow_volume_anomaly_detection(
     worker = VolumeWorker(
         processor=processor,
         event_handler=EventHandler(),
-        discord_messenger=mock_volume_discord_messenger,
+        messengers=[],
         volume_comparative_array_size=volume_comparative_array_size,
         volume_anomaly_ratio=volume_anomaly_ratio,
     )
@@ -246,18 +243,15 @@ async def test_outflow_volume_anomaly_detection(
 
     expected_deviation = 0.37453183520599254
 
-    assert mock_volume_discord_messenger.send_notification.call_count == 1
-    volume_anomaly_notification = (
-        mock_volume_discord_messenger.send_notification.call_args[1]
-    )
+    assert mock_send_notification.call_count == 1
+    volume_anomaly_notification = mock_send_notification.call_args[1]
 
     expected_notification = {
-        "pair_id": UUID("d8f4b7c5-5d9c-4b9c-8b3b-9c0c5d9f4b7c"),
+        "average_volume": expected_average_volume,
+        "bid_ask_ratio": Decimal("0"),
         "deviation": expected_deviation,
-        "current_bid_ask_ratio": 0.00,
-        "previous_bid_ask_ratio": 0.07,
-        "current_avg_volume": expected_average_volume,
-        "previous_avg_volume": 534,
+        "previous_average_volume": 534,
+        "previous_bid_ask_ratio": Decimal("0.07"),
     }
 
     assert volume_anomaly_notification == expected_notification
@@ -271,7 +265,7 @@ async def test_outflow_volume_anomaly_detection(
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeDiscordMessenger.send_notification",
+    "app.services.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
@@ -290,7 +284,7 @@ async def test_not_enough_last_average_volumes(
     mock_save_volume: AsyncMock,
     mock_find_last_bid_ask_ratio: Mock,
     mock_find_last_average_volumes: Mock,
-    mock_volume_discord_messenger: AsyncMock,
+    mock_send_notification: AsyncMock,
     processor: Processor,
 ) -> None:
     expected_average_volume = 15
@@ -305,7 +299,7 @@ async def test_not_enough_last_average_volumes(
     worker = VolumeWorker(
         processor=processor,
         event_handler=EventHandler(),
-        discord_messenger=mock_volume_discord_messenger,
+        messengers=[],
         volume_comparative_array_size=volume_comparative_array_size,
         volume_anomaly_ratio=volume_anomaly_ratio,
     )
@@ -317,13 +311,13 @@ async def test_not_enough_last_average_volumes(
     assert worker._summary_volume_per_interval == 0
     assert worker._volume_updates_counter_per_interval == 0
 
-    assert mock_volume_discord_messenger.send_notification.call_count == 0
+    assert mock_send_notification.call_count == 0
 
     assert mock_save_volume.call_count == 1
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeDiscordMessenger.send_notification",
+    "app.services.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
@@ -332,15 +326,12 @@ async def test_not_enough_last_average_volumes(
 @patch(
     "app.services.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
 )
-@patch(
-    "app.services.workers.volume_worker.save_volume",
-    new_callable=AsyncMock,
-)
+@patch("app.services.workers.volume_worker.save_volume")
 async def test_right_calculating_average(
     mock_save_volume: AsyncMock,
     mock_find_last_bid_ask_ratio: Mock,
     mock_find_last_average_volumes: Mock,
-    mock_volume_discord_messenger: AsyncMock,
+    mock_send_notification: Mock,
     processor: Processor,
 ) -> None:
     summary_asks_volume_per_interval = 10500
@@ -357,7 +348,7 @@ async def test_right_calculating_average(
     worker = VolumeWorker(
         processor=processor,
         event_handler=EventHandler(),
-        discord_messenger=mock_volume_discord_messenger,
+        messengers=[],
         volume_comparative_array_size=volume_comparative_array_size,
         volume_anomaly_ratio=volume_anomaly_ratio,
     )
@@ -370,19 +361,16 @@ async def test_right_calculating_average(
     )
 
     await worker._run_worker()
-    assert mock_volume_discord_messenger.send_notification.call_count == 1
+    assert mock_send_notification.call_count == 1
 
-    volume_anomaly_notification = (
-        mock_volume_discord_messenger.send_notification.call_args[1]
-    )
+    volume_anomaly_notification = mock_send_notification.call_args[1]
 
     expected_notification = {
-        "pair_id": UUID("d8f4b7c5-5d9c-4b9c-8b3b-9c0c5d9f4b7c"),
+        "average_volume": expected_average_volume,
+        "bid_ask_ratio": Decimal("-0.05"),
         "deviation": 12.012012012012011,
-        "current_bid_ask_ratio": -0.05,
-        "previous_bid_ask_ratio": -0.09,
-        "current_avg_volume": expected_average_volume,
-        "previous_avg_volume": 333,
+        "previous_average_volume": 333,
+        "previous_bid_ask_ratio": Decimal("-0.09"),
     }
 
     assert volume_anomaly_notification == expected_notification

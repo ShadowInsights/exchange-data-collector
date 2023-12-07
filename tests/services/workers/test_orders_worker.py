@@ -7,11 +7,11 @@ import pytest
 
 from app.common.processor import Processor
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
-from app.services.collectors.clients.schemas.common import OrderBook, OrderBookEvent
-from app.services.collectors.common import Collector
-from app.services.messengers.order_book_discord_messenger import (
-    OrderAnomalyNotification,
+from app.services.collectors.clients.schemas.common import (
+    OrderBook,
+    OrderBookEvent,
 )
+from app.services.collectors.common import Collector
 from app.services.workers.orders_worker import (
     AnomalyKey,
     OrderAnomaly,
@@ -67,7 +67,7 @@ def collector() -> Collector:
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -75,7 +75,7 @@ def collector() -> Collector:
 )
 async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -99,7 +99,6 @@ async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -109,15 +108,10 @@ async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies.call_count == 1
     assert mock_create_order_book_anomalies.call_count == 1
 
-    order_anomaly_notifications_call = mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_args_list[
-        0
-    ]
+    order_anomaly_notifications_call = mock_send_anomalies.call_args_list[0]
     order_anomaly_notifications = order_anomaly_notifications_call[0][0]
 
     order_anomalies_creation_call = (
@@ -126,21 +120,21 @@ async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
     order_anomalies_creation = order_anomalies_creation_call[0][1]
 
     expected_notifications = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27300.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("245700.00"),
             average_liquidity=Decimal("27500.00"),
-            type="ask",
             position=0,
+            type="ask",
         ),
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27200.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("244800.00"),
             average_liquidity=Decimal("54033.33333333333333333333333"),
-            type="bid",
             position=0,
+            type="bid",
         ),
     ]
     expected_models = [
@@ -234,7 +228,7 @@ async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -242,7 +236,7 @@ async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
 )
 async def test_valid_anomaly_detection_and_put_for_observe_non_first_positions(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -266,7 +260,6 @@ async def test_valid_anomaly_detection_and_put_for_observe_non_first_positions(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -276,10 +269,7 @@ async def test_valid_anomaly_detection_and_put_for_observe_non_first_positions(
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomalies.call_count == 0
     assert mock_create_order_book_anomalies.call_count == 0
     assert worker._detected_anomalies == {
         AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomalyInTime(
@@ -336,7 +326,7 @@ async def test_valid_anomaly_detection_and_put_for_observe_non_first_positions(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -344,7 +334,7 @@ async def test_valid_anomaly_detection_and_put_for_observe_non_first_positions(
 )
 async def test_non_first_already_observing_anomalies_for_notification_after_expiration_of_observing_ttl(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -368,7 +358,6 @@ async def test_non_first_already_observing_anomalies_for_notification_after_expi
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -403,33 +392,28 @@ async def test_non_first_already_observing_anomalies_for_notification_after_expi
     await worker._run_worker()
     assert worker._observing_anomalies == {}
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies.call_count == 1
     assert mock_create_order_book_anomalies.call_count == 1
 
-    order_anomaly_notifications_call = mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_args_list[
-        0
-    ]
+    order_anomaly_notifications_call = mock_send_anomalies.call_args_list[0]
     order_anomaly_notifications = order_anomaly_notifications_call[0][0]
 
     expected_notifications = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("8.0"),
             order_liquidity=Decimal("220000.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
-            type="ask",
             position=2,
+            type="ask",
         ),
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("8.2"),
             order_liquidity=Decimal("221400.00"),
             average_liquidity=Decimal("36100.00"),
-            type="bid",
             position=2,
+            type="bid",
         ),
     ]
 
@@ -441,15 +425,10 @@ async def test_non_first_already_observing_anomalies_for_notification_after_expi
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
-    new_callable=AsyncMock,
-)
-@patch(
     "app.services.workers.orders_worker.get_current_time",
 )
 async def test_real_orders_valid_processing_when_new_one_appears(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -473,7 +452,6 @@ async def test_real_orders_valid_processing_when_new_one_appears(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -523,15 +501,10 @@ async def test_real_orders_valid_processing_when_new_one_appears(
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
-    new_callable=AsyncMock,
-)
-@patch(
     "app.services.workers.orders_worker.get_current_time",
 )
 async def test_real_orders_observing_does_not_exist(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 2.5
@@ -554,7 +527,6 @@ async def test_real_orders_observing_does_not_exist(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -592,7 +564,7 @@ async def test_real_orders_observing_does_not_exist(
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -600,7 +572,7 @@ async def test_real_orders_observing_does_not_exist(
 )
 async def test_real_orders_valid_processing_changed_more_than_ratio(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 2.5
@@ -623,7 +595,6 @@ async def test_real_orders_valid_processing_changed_more_than_ratio(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -659,14 +630,11 @@ async def test_real_orders_valid_processing_changed_more_than_ratio(
 
     assert worker._observing_anomalies == {}
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomalies.call_count == 0
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -674,7 +642,7 @@ async def test_real_orders_valid_processing_changed_more_than_ratio(
 )
 async def test_real_orders_nothing_match_order_anomaly_multiplier(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 2.5
@@ -697,7 +665,6 @@ async def test_real_orders_nothing_match_order_anomaly_multiplier(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=20,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -709,14 +676,11 @@ async def test_real_orders_nothing_match_order_anomaly_multiplier(
 
     assert worker._observing_anomalies == {}
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomalies.call_count == 0
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -724,7 +688,7 @@ async def test_real_orders_nothing_match_order_anomaly_multiplier(
 )
 async def test_skipping_the_first_position_anomaly_that_has_non_expired_key_in_cache(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 2.5
@@ -747,7 +711,6 @@ async def test_skipping_the_first_position_anomaly_that_has_non_expired_key_in_c
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=5,
         anomalies_detection_ttl=4,
         anomalies_observing_ttl=1,
@@ -771,14 +734,11 @@ async def test_skipping_the_first_position_anomaly_that_has_non_expired_key_in_c
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomalies.call_count == 0
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -809,7 +769,6 @@ async def test_skipping_non_first_position_anomaly_that_has_non_expired_key_in_c
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=6,
         anomalies_detection_ttl=4,
         anomalies_observing_ttl=4,
@@ -850,7 +809,7 @@ async def test_skipping_non_first_position_anomaly_that_has_non_expired_key_in_c
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -858,7 +817,7 @@ async def test_skipping_non_first_position_anomaly_that_has_non_expired_key_in_c
 )
 async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key_not_exist_in_cache(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -882,7 +841,6 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=5,
         anomalies_detection_ttl=4,
         anomalies_observing_ttl=1,
@@ -892,10 +850,7 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies.call_count == 1
     assert mock_create_order_book_anomalies.call_count == 1
 
     assert worker._detected_anomalies == {
@@ -918,7 +873,7 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -926,7 +881,7 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
 )
 async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key_is_expired_in_cache(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -950,7 +905,6 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=5,
         anomalies_detection_ttl=2,
         anomalies_observing_ttl=1,
@@ -974,10 +928,7 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies.call_count == 1
     assert mock_create_order_book_anomalies.call_count == 1
 
     assert worker._detected_anomalies == {
@@ -1000,7 +951,7 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1008,7 +959,7 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
 )
 async def test_passing_first_position_anomaly_and_adding_to_cache_if_input_anomaly_is_significantly_increased(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -1032,13 +983,12 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_input_anoma
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=5,
         anomalies_detection_ttl=3,
         anomalies_observing_ttl=1,
         anomalies_observing_ratio=0.2,
-        anomalies_significantly_increased_ratio=2,
         top_n_orders=4,
+        anomalies_significantly_increased_ratio=2,
     )
 
     worker._detected_anomalies = {
@@ -1057,10 +1007,7 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_input_anoma
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies.call_count == 1
     assert mock_create_order_book_anomalies.call_count == 1
 
     assert worker._detected_anomalies == {
@@ -1079,7 +1026,7 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_input_anoma
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1087,7 +1034,7 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_input_anoma
 )
 async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly_key_not_exist_in_cache(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 2.5
@@ -1110,7 +1057,6 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=5,
         anomalies_detection_ttl=4,
         anomalies_observing_ttl=4,
@@ -1123,10 +1069,7 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomalies.call_count == 0
 
     order_anomaly_dto = {
         AnomalyKey(price=Decimal("27600.0"), type="ask"): OrderAnomalyInTime(
@@ -1147,7 +1090,7 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1155,7 +1098,7 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
 )
 async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly_key_is_expired_in_cache(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 5
@@ -1178,7 +1121,6 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=5,
         anomalies_detection_ttl=2,
         anomalies_observing_ttl=1,
@@ -1202,10 +1144,7 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomalies.call_count == 0
 
     order_anomaly_dto = {
         AnomalyKey(price=Decimal("27600.0"), type="ask"): OrderAnomalyInTime(
@@ -1226,7 +1165,7 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1234,7 +1173,7 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
 )
 async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_input_anomaly_is_significantly_increased(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 2.5
@@ -1257,13 +1196,12 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_input_a
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=5,
         anomalies_detection_ttl=3,
         anomalies_observing_ttl=3,
         anomalies_observing_ratio=0.2,
-        anomalies_significantly_increased_ratio=2,
         top_n_orders=4,
+        anomalies_significantly_increased_ratio=2,
     )
 
     worker._detected_anomalies = {
@@ -1282,10 +1220,7 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_input_a
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomalies.call_count == 0
 
     order_anomaly_dto = {
         AnomalyKey(price=Decimal("27600.0"), type="ask"): OrderAnomalyInTime(
@@ -1307,7 +1242,7 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_input_a
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1315,7 +1250,7 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_input_a
 )
 async def test_deleting_expired_keys_from_cache_that_doesnt_exist_in_order_book(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 10
@@ -1338,13 +1273,12 @@ async def test_deleting_expired_keys_from_cache_that_doesnt_exist_in_order_book(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=5,
         anomalies_detection_ttl=3,
         anomalies_observing_ttl=5,
         anomalies_observing_ratio=0.2,
-        anomalies_significantly_increased_ratio=2,
         top_n_orders=4,
+        anomalies_significantly_increased_ratio=2,
     )
 
     worker._detected_anomalies = {
@@ -1367,7 +1301,7 @@ async def test_deleting_expired_keys_from_cache_that_doesnt_exist_in_order_book(
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1375,7 +1309,7 @@ async def test_deleting_expired_keys_from_cache_that_doesnt_exist_in_order_book(
 )
 async def test_valid_anomaly_detection_first_positions_not_match_minimum_liquidity(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 1.0
@@ -1398,7 +1332,6 @@ async def test_valid_anomaly_detection_first_positions_not_match_minimum_liquidi
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -1409,16 +1342,13 @@ async def test_valid_anomaly_detection_first_positions_not_match_minimum_liquidi
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomalies.call_count == 0
     assert worker._detected_anomalies == {}
     assert worker._observing_anomalies == {}
 
 
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1426,7 +1356,7 @@ async def test_valid_anomaly_detection_first_positions_not_match_minimum_liquidi
 )
 async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_overbook_none_found(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 1.0
@@ -1449,7 +1379,6 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_overboo
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -1461,10 +1390,7 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_overboo
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomalies.call_count == 0
     assert worker._detected_anomalies == {}
     assert worker._observing_anomalies == {}
 
@@ -1474,7 +1400,7 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_overboo
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1482,7 +1408,7 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_overboo
 )
 async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_order_book(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -1506,7 +1432,6 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_order_b
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -1518,10 +1443,7 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_order_b
 
     await worker._run_worker()
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies.call_count == 1
     assert mock_create_order_book_anomalies.call_count == 1
     assert len(worker._detected_anomalies) == 4
     assert len(worker._observing_anomalies) == 3
@@ -1532,7 +1454,7 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_order_b
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1540,7 +1462,7 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_order_b
 )
 async def test_non_first_already_observing_anomalies_for_db_saving_after_expiration_of_observing_ttl(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -1564,7 +1486,6 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -1599,15 +1520,10 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
     await worker._run_worker()
     assert worker._observing_anomalies == {}
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies.call_count == 1
     assert mock_create_order_book_anomalies.call_count == 1
 
-    order_anomaly_notifications_call = mock_order_book_discord_messenger.send_anomaly_detection_notifications.call_args_list[
-        0
-    ]
+    order_anomaly_notifications_call = mock_send_anomalies.call_args_list[0]
     order_anomaly_notifications = order_anomaly_notifications_call[0][0]
 
     order_anomalies_creation_call = (
@@ -1616,21 +1532,21 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
     order_anomalies_creation = order_anomalies_creation_call[0][1]
 
     expected_notifications = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("8.0"),
             order_liquidity=Decimal("220000.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
-            type="ask",
             position=2,
+            type="ask",
         ),
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("8.2"),
             order_liquidity=Decimal("221400.00"),
             average_liquidity=Decimal("36100.00"),
-            type="bid",
             position=2,
+            type="bid",
         ),
     ]
     expected_models = [
@@ -1698,7 +1614,7 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1706,7 +1622,7 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
 )
 async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -1730,7 +1646,6 @@ async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -1777,7 +1692,7 @@ async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1788,14 +1703,14 @@ async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_cancellation_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies",
     new_callable=AsyncMock,
 )
 async def test_non_first_anomaly_did_not_canceled(
-    mock_order_book_discord_messenger_send_anomaly_cancellation_notifications: AsyncMock,
+    mock_send_anomaly_cancellations: AsyncMock,
     mock_merge_and_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -1819,7 +1734,6 @@ async def test_non_first_anomaly_did_not_canceled(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -1854,10 +1768,7 @@ async def test_non_first_anomaly_did_not_canceled(
     assert len(worker._observing_saved_limit_anomalies) == 2
     assert expected_ask_anomaly_key in worker._observing_saved_limit_anomalies
     assert expected_bid_anomaly_key in worker._observing_saved_limit_anomalies
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomaly_cancellations.call_count == 0
     assert mock_merge_and_cancel_anomalies.call_count == 0
 
 
@@ -1866,7 +1777,7 @@ async def test_non_first_anomaly_did_not_canceled(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1877,19 +1788,20 @@ async def test_non_first_anomaly_did_not_canceled(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_cancellation_notifications",
-    new_callable=AsyncMock,
+    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 async def test_non_first_anomaly_canceled(
-    mock_order_book_discord_messenger_send_anomaly_cancellation_notifications: AsyncMock,
+    mock_send_anomaly_cancellations: Mock,
     mock_merge_and_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
     current_time = 2.5
     mock_get_current_time.return_value = current_time
+    mock_send_anomaly_cancellations.return_value = []
+
     processor._order_book = OrderBook(
         b={
             Decimal("27200.0"): Decimal("1.0"),
@@ -1908,7 +1820,7 @@ async def test_non_first_anomaly_canceled(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
+        messengers=[],
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -1938,36 +1850,30 @@ async def test_non_first_anomaly_canceled(
     await worker._run_worker()
 
     assert len(worker._observing_saved_limit_anomalies) == 0
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomaly_cancellations.call_count == 1
     assert mock_merge_and_cancel_anomalies.call_count == 1
 
-    send_anomaly_notifications_mock = (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
-    )
     order_anomaly_cancellation_call = (
-        send_anomaly_notifications_mock.call_args_list[0]
+        mock_send_anomaly_cancellations.call_args_list[0]
     )
 
     order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
-            type="ask",
             position=2,
+            type="ask",
         ),
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
             average_liquidity=Decimal("36100.00"),
-            type="bid",
             position=2,
+            type="bid",
         ),
     ]
 
@@ -1979,7 +1885,7 @@ async def test_non_first_anomaly_canceled(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1990,11 +1896,10 @@ async def test_non_first_anomaly_canceled(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_cancellation_notifications",
-    new_callable=AsyncMock,
+    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 async def test_valid_anomaly_canceled(
-    mock_order_book_discord_messenger_send_anomaly_cancellation_notifications: AsyncMock,
+    mock_send_anomaly_cancellations: Mock,
     mock_merge_and_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
     mock_order_book_discord_messenger: AsyncMock,
@@ -2019,7 +1924,6 @@ async def test_valid_anomaly_canceled(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -2049,36 +1953,30 @@ async def test_valid_anomaly_canceled(
     await worker._run_worker()
 
     assert len(worker._observing_saved_limit_anomalies) == 0
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomaly_cancellations.call_count == 1
     assert mock_merge_and_cancel_anomalies.call_count == 1
 
-    send_anomaly_notifications_mock = (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications
-    )
     order_anomaly_cancellation_call = (
-        send_anomaly_notifications_mock.call_args_list[0]
+        mock_send_anomaly_cancellations.call_args_list[0]
     )
 
     order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
-            type="ask",
             position=2,
+            type="ask",
         ),
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
             average_liquidity=Decimal("36100.00"),
-            type="bid",
             position=2,
+            type="bid",
         ),
     ]
 
@@ -2090,7 +1988,7 @@ async def test_valid_anomaly_canceled(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -2101,24 +1999,22 @@ async def test_valid_anomaly_canceled(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_cancellation_notifications",
-    new_callable=AsyncMock,
+    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 @patch(
     "app.services.workers.orders_worker.merge_and_confirm_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_realization_notifications",
-    new_callable=AsyncMock,
+    "app.services.workers.orders_worker.OrdersWorker._send_realized_anomalies"
 )
 async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
-    send_anomaly_realization_notifications_mock: AsyncMock,
+    mock_send_anomalies_realizations: Mock,
     mock_merge_and_confirm_anomalies: AsyncMock,
-    mock_order_book_discord_messenger_send_anomaly_cancellation_notifications: AsyncMock,
+    mock_send_anomaly_cancellations: Mock,
     mock_merge_and_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -2134,7 +2030,6 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -2163,49 +2058,39 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
 
     await worker._run_worker()
 
-    cancellation_call = mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_args_list[
-        0
-    ]
+    cancellation_call = mock_send_anomaly_cancellations.call_args_list[0]
     order_anomaly_cancellation = cancellation_call[0][0]
-    realization_call = mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_args_list[
-        0
-    ]
+    realization_call = mock_send_anomalies_realizations.call_args_list[0]
     order_anomaly_realization = realization_call[0][0]
 
     expected_order_anomaly_cancellation = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
             average_liquidity=Decimal("36100.00"),
-            type="bid",
             position=2,
-        ),
+            type="bid",
+        )
     ]
     expected_order_anomaly_realization = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
-            type="ask",
             position=2,
-        ),
+            type="ask",
+        )
     ]
 
     assert len(worker._observing_saved_limit_anomalies) == 0
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomaly_cancellations.call_count == 1
     assert mock_merge_and_cancel_anomalies.call_count == 1
     assert order_anomaly_cancellation == expected_order_anomaly_cancellation
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies_realizations.call_count == 1
     assert mock_merge_and_confirm_anomalies.call_count == 1
     assert order_anomaly_realization == expected_order_anomaly_realization
 
@@ -2215,7 +2100,7 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -2226,24 +2111,22 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_cancellation_notifications",
-    new_callable=AsyncMock,
+    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 @patch(
     "app.services.workers.orders_worker.merge_and_confirm_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_realization_notifications",
-    new_callable=AsyncMock,
+    "app.services.workers.orders_worker.OrdersWorker._send_realized_anomalies"
 )
 async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
-    send_anomaly_realization_notifications_mock: AsyncMock,
+    mock_send_anomalies_realizations: Mock,
     mock_merge_and_confirm_anomalies: AsyncMock,
-    mock_order_book_discord_messenger_send_anomaly_cancellation_notifications: AsyncMock,
+    mock_send_anomaly_cancellations: Mock,
     mock_merge_and_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -2259,7 +2142,6 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -2288,49 +2170,39 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
 
     await worker._run_worker()
 
-    cancellation_call = mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_args_list[
-        0
-    ]
+    cancellation_call = mock_send_anomaly_cancellations.call_args_list[0]
     order_anomaly_cancellation = cancellation_call[0][0]
-    realization_call = mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_args_list[
-        0
-    ]
+    realization_call = mock_send_anomalies_realizations.call_args_list[0]
     order_anomaly_realization = realization_call[0][0]
 
     expected_order_anomaly_cancellation = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
             average_liquidity=Decimal("27433.33333333333333333333333"),
-            type="ask",
             position=2,
-        ),
+            type="ask",
+        )
     ]
     expected_order_anomaly_realization = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
             average_liquidity=Decimal("36100.00"),
-            type="bid",
             position=2,
-        ),
+            type="bid",
+        )
     ]
 
     assert len(worker._observing_saved_limit_anomalies) == 0
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomaly_cancellations.call_count == 1
     assert mock_merge_and_cancel_anomalies.call_count == 1
     assert order_anomaly_cancellation == expected_order_anomaly_cancellation
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies_realizations.call_count == 1
     assert mock_merge_and_confirm_anomalies.call_count == 1
     assert order_anomaly_realization == expected_order_anomaly_realization
 
@@ -2340,7 +2212,7 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_detection_notifications",
+    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
@@ -2351,24 +2223,22 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_cancellation_notifications",
-    new_callable=AsyncMock,
+    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 @patch(
     "app.services.workers.orders_worker.merge_and_confirm_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrderBookDiscordMessenger.send_anomaly_realization_notifications",
-    new_callable=AsyncMock,
+    "app.services.workers.orders_worker.OrdersWorker._send_realized_anomalies"
 )
 async def test_valid_anomaly_first_position_realized(
-    send_anomaly_realization_notifications_mock: AsyncMock,
+    mock_send_anomalies_realizations: Mock,
     mock_merge_and_confirm_anomalies: AsyncMock,
-    mock_order_book_discord_messenger_send_anomaly_cancellation_notifications: AsyncMock,
+    mock_send_anomaly_cancellations: Mock,
     mock_merge_and_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
-    mock_order_book_discord_messenger: AsyncMock,
+    mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
     processor: Processor,
 ) -> None:
@@ -2390,7 +2260,6 @@ async def test_valid_anomaly_first_position_realized(
     )
     worker = OrdersWorker(
         processor=processor,
-        discord_messenger=mock_order_book_discord_messenger,
         order_anomaly_multiplier=1.5,
         anomalies_detection_ttl=1,
         anomalies_observing_ttl=1,
@@ -2419,12 +2288,10 @@ async def test_valid_anomaly_first_position_realized(
 
     await worker._run_worker()
 
-    realization_call = mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_args_list[
-        0
-    ]
+    realization_call = mock_send_anomalies_realizations.call_args_list[0]
     order_anomaly_realization = realization_call[0][0]
     expected_order_anomaly_realization = [
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27300.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("245700.00"),
@@ -2432,7 +2299,7 @@ async def test_valid_anomaly_first_position_realized(
             position=2,
             type="ask",
         ),
-        OrderAnomalyNotification(
+        OrderAnomaly(
             price=Decimal("27200.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("244800.00"),
@@ -2443,15 +2310,9 @@ async def test_valid_anomaly_first_position_realized(
     ]
 
     assert len(worker._observing_saved_limit_anomalies) == 0
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_cancellation_notifications.call_count
-        == 0
-    )
+    assert mock_send_anomaly_cancellations.call_count == 0
     assert mock_merge_and_cancel_anomalies.call_count == 0
 
-    assert (
-        mock_order_book_discord_messenger.send_anomaly_realization_notifications.call_count
-        == 1
-    )
+    assert mock_send_anomalies_realizations.call_count == 1
     assert mock_merge_and_confirm_anomalies.call_count == 1
     assert order_anomaly_realization == expected_order_anomaly_realization

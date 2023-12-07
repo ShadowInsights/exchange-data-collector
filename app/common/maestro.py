@@ -24,13 +24,24 @@ from app.services.collectors.binance_collector import BinanceCollector
 from app.services.collectors.coinbase_collector import CoinbaseCollector
 from app.services.collectors.common import Collector
 from app.services.collectors.kraken_collector import KrakenCollector
-from app.services.messengers.order_book_discord_messenger import (
+from app.services.messengers.discord.order_book_discord_messenger import (
     OrderBookDiscordMessenger,
 )
-from app.services.messengers.orders_anomalies_summary_discord_messenger import (
+from app.services.messengers.discord.orders_anomalies_summary_discord_messenger import (
     OrdersAnomaliesSummaryDiscordMessenger,
 )
-from app.services.messengers.volume_discord_messenger import VolumeDiscordMessenger
+from app.services.messengers.discord.volume_discord_messenger import (
+    VolumeDiscordMessenger,
+)
+from app.services.messengers.telegram.order_book_telegram_messenger import (
+    OrderBookTelegramMessenger,
+)
+from app.services.messengers.telegram.orders_anomalies_summary_telegram_messenger import (
+    OrdersAnomaliesSummaryTelegramMessenger,
+)
+from app.services.messengers.telegram.volume_telegram_messenger import (
+    VolumeTelegramMessenger,
+)
 from app.services.workers.db_worker import DbWorker
 from app.services.workers.orders_anomalies_summary_worker import (
     OrdersAnomaliesSummaryWorker,
@@ -164,18 +175,35 @@ class Maestro:
     def _create_default_workers(
         self, processor: Processor, event_handler: EventHandler
     ) -> None:
-        default_workers: list[DbWorker | VolumeWorker | OrdersWorker | OrdersAnomaliesSummaryWorker] = [
+        default_workers: list[
+            DbWorker
+            | VolumeWorker
+            | OrdersWorker
+            | OrdersAnomaliesSummaryWorker
+        ] = [
             DbWorker(processor=processor),
             VolumeWorker(
                 processor=processor,
                 event_handler=event_handler,
-                discord_messenger=VolumeDiscordMessenger(),
+                messengers=[
+                    VolumeDiscordMessenger(),
+                    VolumeTelegramMessenger(),
+                ],
             ),
             OrdersWorker(
                 processor=processor,
-                discord_messenger=OrderBookDiscordMessenger(),
+                messengers=[
+                    OrderBookDiscordMessenger(),
+                    OrderBookTelegramMessenger(),
+                ],
             ),
-            OrdersAnomaliesSummaryWorker(processor=processor, discord_messenger=OrdersAnomaliesSummaryDiscordMessenger()),
+            OrdersAnomaliesSummaryWorker(
+                processor=processor,
+                messengers=[
+                    OrdersAnomaliesSummaryDiscordMessenger(),
+                    OrdersAnomaliesSummaryTelegramMessenger(),
+                ],
+            ),
         ]
 
         for worker in default_workers:

@@ -16,9 +16,9 @@ from app.db.repositories.order_book_anomaly_repository import (
     merge_and_confirm_anomalies,
 )
 from app.services.collectors.clients.schemas.common import OrderBook
-from app.services.messengers.order_book_discord_messenger import (
+from app.services.messengers.order_book_messenger import (
     OrderAnomalyNotification,
-    OrderBookDiscordMessenger,
+    OrderBookMessenger,
 )
 from app.services.workers.common import Worker
 from app.utils.math_utils import calculate_average_excluding_value_from_sum
@@ -61,7 +61,7 @@ class OrdersWorker(Worker):
     def __init__(
         self,
         processor: Processor,
-        discord_messenger: OrderBookDiscordMessenger,
+        messengers: list[OrderBookMessenger] = [],
         order_anomaly_multiplier: float = settings.ORDER_ANOMALY_MULTIPLIER,
         anomalies_detection_ttl: int = settings.ANOMALIES_DETECTION_TTL,
         anomalies_observing_ttl: int = settings.ANOMALIES_OBSERVING_TTL,
@@ -74,7 +74,7 @@ class OrdersWorker(Worker):
         observing_saved_limit_anomalies_ratio: float = settings.OBSERVING_SAVED_LIMIT_ANOMALIES_RATIO,
     ):
         super().__init__(processor)
-        self._discord_messenger = discord_messenger
+        self._messengers: list[OrderBookMessenger] = messengers
         self._detected_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
         self._observing_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
         self._observing_saved_limit_anomalies: Dict[
@@ -140,7 +140,7 @@ class OrdersWorker(Worker):
 
         if filtered_anomalies:
             save_anomalies = self.__save_anomalies(filtered_anomalies)
-            send_anomalies = self.__send_anomalies(filtered_anomalies)
+            send_anomalies = self._send_anomalies(filtered_anomalies)
             await asyncio.gather(save_anomalies, send_anomalies)
 
     async def __handle_observing_anomalies_destiny(
@@ -160,18 +160,18 @@ class OrdersWorker(Worker):
             await self.__cancel_anomalies(
                 observing_anomalies_destiny.cancelled_anomalies
             )
-            send_anomalies_task = self.__send_canceled_anomalies(
+            send_anomalies_tasks = self._send_canceled_anomalies(
                 observing_anomalies_destiny.cancelled_anomalies
             )
-            tasks.append(send_anomalies_task)
+            tasks.extend(send_anomalies_tasks)
         if observing_anomalies_destiny.realized_anomalies:
             await self.__confirm_anomalies(
                 observing_anomalies_destiny.realized_anomalies
             )
-            send_anomalies_task = self.__send_realized_anomalies(
+            send_anomalies_tasks = self._send_realized_anomalies(
                 observing_anomalies_destiny.realized_anomalies
             )
-            tasks.append(send_anomalies_task)
+            tasks.extend(send_anomalies_tasks)
 
         if tasks:
             await asyncio.gather(*tasks)
@@ -245,25 +245,6 @@ class OrdersWorker(Worker):
                     AnomalyKey(anomaly.price, anomaly.type)
                 ] = anomaly
 
-    async def __send_anomalies(self, anomalies: List[OrderAnomaly]) -> None:
-        order_anomaly_notifications = [
-            OrderAnomalyNotification(
-                price=anomaly.price,
-                quantity=anomaly.quantity,
-                order_liquidity=anomaly.order_liquidity,
-                average_liquidity=anomaly.average_liquidity,
-                type=anomaly.type,
-                position=anomaly.position,
-            )
-            for anomaly in anomalies
-        ]
-        asyncio.create_task(
-            self._discord_messenger.send_anomaly_detection_notifications(
-                order_anomaly_notifications,
-                self._processor.pair_id,
-            )
-        )
-
     async def __cancel_anomalies(
         self, anomalies_to_cancel: List[OrderAnomaly]
     ) -> None:
@@ -288,9 +269,31 @@ class OrdersWorker(Worker):
                 session, anomalies_model_to_confirm
             )
 
-    def __send_canceled_anomalies(
+    async def _send_anomalies(self, anomalies: List[OrderAnomaly]) -> None:
+        order_anomaly_notifications = [
+            OrderAnomalyNotification(
+                price=anomaly.price,
+                quantity=anomaly.quantity,
+                order_liquidity=anomaly.order_liquidity,
+                average_liquidity=anomaly.average_liquidity,
+                type=anomaly.type,
+                position=anomaly.position,
+            )
+            for anomaly in anomalies
+        ]
+
+        for messenger in self._messengers:
+            asyncio.create_task(
+                messenger.send_anomaly_detection_notifications(
+                    anomalies=order_anomaly_notifications,
+                    pair_id=self._processor.pair_id,
+                )
+            )
+
+    def _send_canceled_anomalies(
         self, canceled_anomalies: List[OrderAnomaly]
-    ) -> asyncio.Task:
+    ) -> list[asyncio.Task]:
+        tasks = []
         order_anomaly_notifications = [
             OrderAnomalyNotification(
                 price=anomaly.price,
@@ -302,16 +305,22 @@ class OrdersWorker(Worker):
             )
             for anomaly in canceled_anomalies
         ]
-        return asyncio.create_task(
-            self._discord_messenger.send_anomaly_cancellation_notifications(
-                order_anomaly_notifications,
-                self._processor.pair_id,
+        for messenger in self._messengers:
+            task = asyncio.create_task(
+                messenger.send_anomaly_cancellation_notifications(
+                    order_anomaly_notifications,
+                    self._processor.pair_id,
+                )
             )
-        )
 
-    def __send_realized_anomalies(
+            tasks.append(task)
+
+        return []
+
+    def _send_realized_anomalies(
         self, realized_anomalies: List[OrderAnomaly]
-    ) -> asyncio.Task:
+    ) -> list[asyncio.Task]:
+        tasks = []
         order_anomaly_notifications = [
             OrderAnomalyNotification(
                 price=anomaly.price,
@@ -323,12 +332,17 @@ class OrdersWorker(Worker):
             )
             for anomaly in realized_anomalies
         ]
-        return asyncio.create_task(
-            self._discord_messenger.send_anomaly_realization_notifications(
-                order_anomaly_notifications,
-                self._processor.pair_id,
+        for messenger in self._messengers:
+            task = asyncio.create_task(
+                messenger.send_anomaly_realization_notifications(
+                    order_anomaly_notifications,
+                    self._processor.pair_id,
+                )
             )
-        )
+
+            tasks.append(task)
+
+        return tasks
 
     def __find_anomalies(self, order_book: OrderBook) -> List[OrderAnomaly]:
         return self.__get_anomalies(

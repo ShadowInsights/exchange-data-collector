@@ -1,6 +1,5 @@
 from asyncio import gather
-from decimal import Decimal
-from typing import List, Literal, NamedTuple, Tuple
+from typing import List, Tuple
 from uuid import UUID
 
 from app.common.config import settings
@@ -10,7 +9,11 @@ from app.db.models.pair import PairModel
 from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.pair_repository import find_pair_by_id
 from app.services.messengers.common import BaseMessage, Field
-from app.services.messengers.discord_messenger import DiscordMessenger
+from app.services.messengers.discord.discord_messenger import DiscordMessenger
+from app.services.messengers.order_book_messenger import (
+    OrderAnomalyNotification,
+    OrderBookMessenger,
+)
 from app.utils.string_utils import (
     add_comma_every_n_symbols,
     round_decimal_to_first_non_zero,
@@ -18,16 +21,7 @@ from app.utils.string_utils import (
 )
 
 
-class OrderAnomalyNotification(NamedTuple):
-    price: Decimal
-    quantity: Decimal
-    order_liquidity: Decimal
-    average_liquidity: Decimal
-    type: Literal["ask", "bid"]
-    position: int
-
-
-class OrderBookDiscordMessenger(DiscordMessenger):
+class OrderBookDiscordMessenger(OrderBookMessenger, DiscordMessenger):
     def __init__(self) -> None:
         super().__init__()
 

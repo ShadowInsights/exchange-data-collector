@@ -5,7 +5,7 @@ metadata:
   labels:
     app: exchange-data-collector
 spec:
-  replicas: 7
+  replicas: 21
   selector:
     matchLabels:
       app: exchange-data-collector
@@ -148,4 +148,14 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   key: DISCORD_ORDER_BOOK_ANOMALY_REALIZED_EMBED_COLOR
+                  name: exchange-data-collector-config
+            - name: TELEGRAM_BOT_TOKENS
+              valueFrom:
+                configMapKeyRef:
+                  key: TELEGRAM_BOT_TOKENS
+                  name: exchange-data-collector-config
+            - name: TELEGRAM_CHAT_IDS
+              valueFrom:
+                configMapKeyRef:
+                  key: TELEGRAM_CHAT_IDS
                   name: exchange-data-collector-config

@@ -16,11 +16,15 @@ from app.db.repositories.orders_anomalies_summary_repository import (
     create_orders_anomalies_summary,
     get_latest_orders_anomalies_summary,
 )
-from app.services.messengers.orders_anomalies_summary_discord_messenger import (
-    OrdersAnomaliesSummaryDiscordMessenger,
+from app.services.messengers.orders_anomalies_summary_messenger import (
+    OrdersAnomaliesSummaryMessenger,
+    OrdersAnomaliesSummaryNotification,
 )
 from app.services.workers.common import Worker
-from app.utils.math_utils import numbers_have_same_sign
+from app.utils.math_utils import (
+    calculate_decimal_ratio,
+    numbers_have_same_sign,
+)
 from app.utils.scheduling_utils import SetInterval
 
 
@@ -34,13 +38,13 @@ class OrdersAnomaliesSummaryWorker(Worker):
     def __init__(
         self,
         processor: Processor,
-        discord_messenger: OrdersAnomaliesSummaryDiscordMessenger,
+        messengers: list[OrdersAnomaliesSummaryMessenger] = [],
         volume_anomaly_ratio: float = settings.ORDERS_ANOMALIES_SUMMARY_RATIO,
         volume_comparative_array_size: int = settings.ORDERS_ANOMALIES_SUMMARY_COMPARATIVE_ARRAY_SIZE,
         executor_factory: type[Executor] = ThreadPoolExecutor,
     ):
         super().__init__(processor)
-        self._discord_messenger = discord_messenger
+        self._messengers = messengers
         self._volume_anomaly_ratio = Decimal(volume_anomaly_ratio)
         self._volume_comparative_array_size = volume_comparative_array_size + 1
         # TODO: add support for different executor types
@@ -123,7 +127,7 @@ class OrdersAnomaliesSummaryWorker(Worker):
             )
 
         if orders_anomalies_summary_deviation:
-            await self.__send_notification(orders_anomalies_summary_deviation)
+            await self._send_notification(orders_anomalies_summary_deviation)
 
     def __perform_anomaly_analysis(
         self,
@@ -143,8 +147,8 @@ class OrdersAnomaliesSummaryWorker(Worker):
             0
         ].orders_total_difference
 
-        previous_orders_total_difference_avg = mean(
-            latest_orders_total_difference_array
+        previous_orders_total_difference_avg = Decimal(
+            mean(latest_orders_total_difference_array)
         )
         if (
             previous_orders_total_difference_avg == 0
@@ -158,8 +162,8 @@ class OrdersAnomaliesSummaryWorker(Worker):
                 previous_total_difference=previous_orders_total_difference_avg,
             )
 
-        deviation = (
-            current_total_difference / previous_orders_total_difference_avg
+        deviation = calculate_decimal_ratio(
+            current_total_difference, previous_orders_total_difference_avg
         )
 
         if not numbers_have_same_sign(
@@ -182,12 +186,17 @@ class OrdersAnomaliesSummaryWorker(Worker):
 
         return None
 
-    async def __send_notification(
+    async def _send_notification(
         self, orders_anomalies_summary_deviation: OrdersAnomaliesSummary
     ) -> None:
-        await self._discord_messenger.send_notification(
+        notification = OrdersAnomaliesSummaryNotification(
             pair_id=self._processor.pair_id,
             deviation=orders_anomalies_summary_deviation.deviation,
             current_total_difference=orders_anomalies_summary_deviation.current_total_difference,
             previous_total_difference=orders_anomalies_summary_deviation.previous_total_difference,
         )
+
+        for messenger in self._messengers:
+            asyncio.create_task(
+                messenger.send_notification(notification=notification)
+            )

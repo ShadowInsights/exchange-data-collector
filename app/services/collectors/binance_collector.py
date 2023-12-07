@@ -4,7 +4,9 @@ from uuid import UUID
 
 from _decimal import Decimal
 
-from app.services.collectors.clients.binance_http_client import BinanceHttpClient
+from app.services.collectors.clients.binance_http_client import (
+    BinanceHttpClient,
+)
 from app.services.collectors.clients.binance_websocket_client import (
     BinanceWebsocketClient,
 )

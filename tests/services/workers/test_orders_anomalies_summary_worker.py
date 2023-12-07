@@ -10,6 +10,7 @@ from app.services.collectors.clients.schemas.common import OrderBookEvent
 from app.services.collectors.common import Collector
 from app.services.workers.orders_anomalies_summary_worker import (
     OrdersAnomaliesSummaryWorker,
+    OrdersAnomaliesSummary,
 )
 from app.utils.event_utils import EventHandler
 
@@ -68,18 +69,19 @@ def collector() -> Collector:
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryDiscordMessenger.send_notification",
+    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
     new_callable=AsyncMock,
 )
 async def test_worker_should_valid_create_orders_anomalies_summary(
-    mock_discord_messenger: AsyncMock,
+    mock_send_notification: AsyncMock,
     mock_create_orders_anomalies_summary: AsyncMock,
     mock_get_order_book_anomalies_sum_in_date_range: AsyncMock,
     mock_get_latest_orders_anomalies_summary: AsyncMock,
     processor: Processor,
 ) -> None:
     worker = OrdersAnomaliesSummaryWorker(
-        processor=processor, discord_messenger=mock_discord_messenger, volume_anomaly_ratio=0.5)
+        processor=processor, volume_anomaly_ratio=0.5
+    )
     mock_get_order_book_anomalies_sum_in_date_range.side_effect = [
         10,
         20,
@@ -87,9 +89,11 @@ async def test_worker_should_valid_create_orders_anomalies_summary(
 
     await worker._run_worker()
 
-    create_orders_anomalies_summary = mock_create_orders_anomalies_summary.call_args[1][
-        "orders_anomalies_summary_in"
-    ]
+    create_orders_anomalies_summary = (
+        mock_create_orders_anomalies_summary.call_args[1][
+            "orders_anomalies_summary_in"
+        ]
+    )
 
     mock_get_latest_orders_anomalies_summary.assert_called()
     mock_get_order_book_anomalies_sum_in_date_range.assert_called()
@@ -112,34 +116,39 @@ async def test_worker_should_valid_create_orders_anomalies_summary(
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryDiscordMessenger.send_notification",
+    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
     new_callable=AsyncMock,
 )
 async def test_worker_should_valid_send_orders_anomalies_summary_anomaly_when_deviation_exists(
-    mock_discord_messenger: AsyncMock,
+    mock_send_notification: AsyncMock,
     mock_create_orders_anomalies_summary: AsyncMock,
     mock_get_order_book_anomalies_sum_in_date_range: AsyncMock,
     mock_get_latest_orders_anomalies_summary: AsyncMock,
     processor: Processor,
 ) -> None:
     worker = OrdersAnomaliesSummaryWorker(
-        processor=processor, discord_messenger=mock_discord_messenger, volume_anomaly_ratio=0.5)
+        processor=processor, volume_anomaly_ratio=0.5
+    )
     mock_get_latest_orders_anomalies_summary.side_effect = [
         [],
         [
-            Mock(orders_total_difference=10),
-            Mock(orders_total_difference=56),
-            Mock(orders_total_difference=60),
-            Mock(orders_total_difference=40),
+            Mock(orders_total_difference=Decimal("10")),
+            Mock(orders_total_difference=Decimal("56")),
+            Mock(orders_total_difference=Decimal("60")),
+            Mock(orders_total_difference=Decimal("40")),
         ],
     ]
 
     await worker._run_worker()
 
-    assert mock_discord_messenger.send_notification.call_args.kwargs['pair_id'] == processor.pair_id
-    assert mock_discord_messenger.send_notification.call_args.kwargs['deviation'] == 0.19230769230769232
-    assert mock_discord_messenger.send_notification.call_args.kwargs['current_total_difference'] == 10
-    assert mock_discord_messenger.send_notification.call_args.kwargs['previous_total_difference'] == 52
+    assert mock_send_notification.call_count == 1
+
+    actual_notification = mock_send_notification.call_args[0][0]
+    assert actual_notification == OrdersAnomaliesSummary(
+        current_total_difference=Decimal("10"),
+        previous_total_difference=Decimal("52"),
+        deviation=Decimal("0.19"),
+    )
 
 
 @patch(
@@ -155,34 +164,39 @@ async def test_worker_should_valid_send_orders_anomalies_summary_anomaly_when_de
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryDiscordMessenger.send_notification",
+    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
     new_callable=AsyncMock,
 )
 async def test_worker_should_valid_send_orders_anomalies_summary_anomaly_when_numbers_do_not_have_same_sign(
-    mock_discord_messenger: AsyncMock,
+    mock_send_notification: AsyncMock,
     mock_create_orders_anomalies_summary: AsyncMock,
     mock_get_order_book_anomalies_sum_in_date_range: AsyncMock,
     mock_get_latest_orders_anomalies_summary: AsyncMock,
     processor: Processor,
 ) -> None:
     worker = OrdersAnomaliesSummaryWorker(
-        processor=processor, discord_messenger=mock_discord_messenger, volume_anomaly_ratio=0.5)
+        processor=processor, volume_anomaly_ratio=0.5
+    )
     mock_get_latest_orders_anomalies_summary.side_effect = [
         [],
         [
-            Mock(orders_total_difference=-0.1),
-            Mock(orders_total_difference=1),
-            Mock(orders_total_difference=1.2),
-            Mock(orders_total_difference=1.25),
+            Mock(orders_total_difference=-Decimal("0.1")),
+            Mock(orders_total_difference=Decimal("1")),
+            Mock(orders_total_difference=Decimal("1.2")),
+            Mock(orders_total_difference=Decimal("1.25")),
         ],
     ]
 
     await worker._run_worker()
 
-    assert mock_discord_messenger.send_notification.call_args.kwargs['pair_id'] == processor.pair_id
-    assert mock_discord_messenger.send_notification.call_args.kwargs['deviation'] == -0.08695652173913045
-    assert mock_discord_messenger.send_notification.call_args.kwargs['current_total_difference'] == -0.1
-    assert mock_discord_messenger.send_notification.call_args.kwargs['previous_total_difference'] == 1.15
+    assert mock_send_notification.call_count == 1
+
+    actual_notification = mock_send_notification.call_args[0][0]
+    assert actual_notification == OrdersAnomaliesSummary(
+        current_total_difference=Decimal("-0.1"),
+        previous_total_difference=Decimal("1.15"),
+        deviation=Decimal("-0.09"),
+    )
 
 
 @patch(
@@ -198,28 +212,29 @@ async def test_worker_should_valid_send_orders_anomalies_summary_anomaly_when_nu
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryDiscordMessenger.send_notification",
+    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
     new_callable=AsyncMock,
 )
 async def test_worker_should_not_send_orders_anomalies_summary_anomaly_when_no_changes(
-    mock_discord_messenger: AsyncMock,
+    mock_send_notification: AsyncMock,
     mock_create_orders_anomalies_summary: AsyncMock,
     mock_get_order_book_anomalies_sum_in_date_range: AsyncMock,
     mock_get_latest_orders_anomalies_summary: AsyncMock,
     processor: Processor,
 ) -> None:
     worker = OrdersAnomaliesSummaryWorker(
-        processor=processor, discord_messenger=mock_discord_messenger, volume_anomaly_ratio=2)
+        processor=processor, volume_anomaly_ratio=2
+    )
     mock_get_latest_orders_anomalies_summary.side_effect = [
         [],
         [
-            Mock(orders_total_difference=10),
-            Mock(orders_total_difference=12),
-            Mock(orders_total_difference=11),
-            Mock(orders_total_difference=10),
+            Mock(orders_total_difference=Decimal("10")),
+            Mock(orders_total_difference=Decimal("12")),
+            Mock(orders_total_difference=Decimal("11")),
+            Mock(orders_total_difference=Decimal("10")),
         ],
     ]
 
     await worker._run_worker()
 
-    assert mock_discord_messenger.send_notification.call_count == 0
+    assert mock_send_notification.call_count == 0

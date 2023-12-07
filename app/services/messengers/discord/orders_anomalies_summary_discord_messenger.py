@@ -1,6 +1,6 @@
 import asyncio
 from decimal import Decimal
-from typing import Tuple, List
+from typing import List, Tuple
 from uuid import UUID
 
 from app.common.config import settings
@@ -9,15 +9,18 @@ from app.db.models.exchange import ExchangeModel
 from app.db.models.pair import PairModel
 from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.pair_repository import find_pair_by_id
-from app.services.messengers.common import Field, BaseMessage
-from app.services.messengers.discord_messenger import DiscordMessenger
-from app.utils.string_utils import (
-    to_title_case,
-    add_comma_every_n_symbols,
+from app.services.messengers.common import BaseMessage, Field
+from app.services.messengers.discord.discord_messenger import DiscordMessenger
+from app.services.messengers.orders_anomalies_summary_messenger import (
+    OrdersAnomaliesSummaryMessenger,
+    OrdersAnomaliesSummaryNotification,
 )
+from app.utils.string_utils import add_comma_every_n_symbols, to_title_case
 
 
-class OrdersAnomaliesSummaryDiscordMessenger(DiscordMessenger):
+class OrdersAnomaliesSummaryDiscordMessenger(
+    OrdersAnomaliesSummaryMessenger, DiscordMessenger
+):
     def __init__(self) -> None:
         super().__init__()
 
@@ -27,25 +30,23 @@ class OrdersAnomaliesSummaryDiscordMessenger(DiscordMessenger):
         await self._send(message=message, embed_color=embed_color)
 
     async def send_notification(
-        self,
-        pair_id: UUID,
-        deviation: Decimal | None,
-        current_total_difference: Decimal,
-        previous_total_difference: Decimal,
+        self, notification: OrdersAnomaliesSummaryNotification
     ) -> None:
         fields = []
 
-        exchange, pair = await self._get_exchange_and_pair(pair_id)
+        exchange, pair = await self._get_exchange_and_pair(
+            notification.pair_id
+        )
         formatted_exchange_name = to_title_case(str(exchange.name))
 
         description = (
             f"Anomaly liquidity difference was detected between asks and bids "
             f"for **{pair.symbol}** on **{formatted_exchange_name}**"
         )
-        if deviation is not None:
+        if notification.deviation is not None:
             deviation_field = Field(
                 name="Deviation",
-                value=f"{self._format_anomaly_fields(deviation)}",
+                value=f"{self._format_anomaly_fields(notification.deviation)}",
                 inline=True,
             )
 
@@ -53,8 +54,8 @@ class OrdersAnomaliesSummaryDiscordMessenger(DiscordMessenger):
 
         liquidity_difference_field = Field(
             name="Liquidity difference",
-            value=f"Current: {self._format_anomaly_fields(current_total_difference)}\n "
-            f"Previous: {self._format_anomaly_fields(previous_total_difference)}",
+            value=f"Current: {self._format_anomaly_fields(notification.current_total_difference)}\n "
+            f"Previous: {self._format_anomaly_fields(notification.previous_total_difference)}",
             inline=True,
         )
 

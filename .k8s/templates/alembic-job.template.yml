@@ -156,5 +156,15 @@ spec:
                 configMapKeyRef:
                   key: ORDERS_ANOMALIES_SUMMARY_RATIO
                   name: exchange-data-collector-config
+            - name: TELEGRAM_BOT_TOKENS
+              valueFrom:
+                configMapKeyRef:
+                  key: TELEGRAM_BOT_TOKENS
+                  name: exchange-data-collector-config
+            - name: TELEGRAM_CHAT_IDS
+              valueFrom:
+                configMapKeyRef:
+                  key: TELEGRAM_CHAT_IDS
+                  name: exchange-data-collector-config
       restartPolicy: Never
   backoffLimit: 2

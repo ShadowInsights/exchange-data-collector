@@ -1,6 +1,7 @@
 from typing import Sequence
 from uuid import UUID
 
+from _decimal import Decimal
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -35,7 +36,7 @@ def find_sync_last_n_volumes(
 
 async def save_volume(
     session: AsyncSession,
-    bid_ask_ratio: float,
+    bid_ask_ratio: Decimal,
     avg_volume: int,
     launch_id: UUID,
     pair_id: UUID,
