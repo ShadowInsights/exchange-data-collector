@@ -13,6 +13,7 @@ env:
   DEPLOYMENT_NAME: exchange-data-collector
   REPOSITORY: exchange-data-collector
   IMAGE: exchange-data-collector
+  REPLICA_COUNT: 14
 
 jobs:
   setup-build-publish-deploy:
@@ -79,8 +80,11 @@ jobs:
       # Deploy the Docker image to the GKE cluster
       - name: Deploy
         run: |-
-          # Replace placeholder in the deployment template with the actual image path
-          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/templates/deployment.template.yml > .k8s/deployment.yml
+          # Replace image placeholder in the deployment template
+          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/templates/deployment.template.yml > .k8s/deployment-temp.yml
+
+          # Replace replicas placeholder in the deployment template
+          sed "s|REPLICAS_PLACEHOLDER|${{ env.REPLICA_COUNT }}|" .k8s/deployment-temp.yml > .k8s/deployment.yml
 
           # Apply the Kubernetes deployment
           kubectl apply -f .k8s/deployment.yml

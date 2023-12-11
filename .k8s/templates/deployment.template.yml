@@ -5,7 +5,7 @@ metadata:
   labels:
     app: exchange-data-collector
 spec:
-  replicas: 21
+  replicas: REPLICAS_PLACEHOLDER
   selector:
     matchLabels:
       app: exchange-data-collector
