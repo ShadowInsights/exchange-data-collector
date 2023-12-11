@@ -98,7 +98,7 @@ class OrdersWorker(Worker):
             observing_saved_limit_anomalies_ratio
         )
 
-    @SetInterval(settings.ORDERS_WORKER_JOB_INTERVAL)
+    @SetInterval(settings.ORDERS_WORKER_JOB_INTERVAL, name="Orders worker")
     async def run(self, callback_event: asyncio.Event | None = None) -> None:
         await super().run(callback_event)
         if callback_event:

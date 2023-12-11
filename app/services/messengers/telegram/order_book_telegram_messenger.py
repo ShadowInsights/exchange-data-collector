@@ -12,9 +12,7 @@ from app.services.messengers.discord.order_book_discord_messenger import (
     OrderAnomalyNotification,
 )
 from app.services.messengers.order_book_messenger import OrderBookMessenger
-from app.services.messengers.telegram.telegram_messenger import (
-    TelegramMessenger,
-)
+from app.services.messengers.telegram.telegram_messenger import TelegramMessenger
 from app.utils.string_utils import add_comma_every_n_symbols, replace_char
 
 BID_EMOJI = "📉"

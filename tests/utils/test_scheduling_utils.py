@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, Mock, patch
 from app.utils.scheduling_utils import SetInterval
 
 
-@SetInterval(5)
+@SetInterval(5, "test")
 async def func(callback_event: asyncio.Event | None = None) -> None:
     if callback_event:
         callback_event.set()

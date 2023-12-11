@@ -7,10 +7,7 @@ import pytest
 
 from app.common.processor import Processor
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
-from app.services.collectors.clients.schemas.common import (
-    OrderBook,
-    OrderBookEvent,
-)
+from app.services.collectors.clients.schemas.common import OrderBook, OrderBookEvent
 from app.services.collectors.common import Collector
 from app.services.workers.orders_worker import (
     AnomalyKey,

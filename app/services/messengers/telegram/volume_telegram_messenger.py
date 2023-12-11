@@ -8,13 +8,8 @@ from app.db.models.pair import PairModel
 from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.pair_repository import find_pair_by_id
 from app.services.messengers.common import BaseMessage, Field
-from app.services.messengers.telegram.telegram_messenger import (
-    TelegramMessenger,
-)
-from app.services.messengers.volume_messenger import (
-    VolumeMessenger,
-    VolumeNotification,
-)
+from app.services.messengers.telegram.telegram_messenger import TelegramMessenger
+from app.services.messengers.volume_messenger import VolumeMessenger, VolumeNotification
 from app.utils.string_utils import (
     add_comma_every_n_symbols,
     replace_char,

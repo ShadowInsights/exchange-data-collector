@@ -4,10 +4,7 @@ from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.pair_repository import find_pair_by_id
 from app.services.messengers.common import BaseMessage, Field
 from app.services.messengers.discord.discord_messenger import DiscordMessenger
-from app.services.messengers.volume_messenger import (
-    VolumeMessenger,
-    VolumeNotification,
-)
+from app.services.messengers.volume_messenger import VolumeMessenger, VolumeNotification
 from app.utils.string_utils import add_comma_every_n_symbols, to_title_case
 
 

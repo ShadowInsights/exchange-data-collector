@@ -32,7 +32,7 @@ class DbWorker(Worker):
         super().__init__(processor)
         self._stamp_id = 0
 
-    @SetInterval(settings.DB_WORKER_JOB_INTERVAL)
+    @SetInterval(settings.DB_WORKER_JOB_INTERVAL, name="DB worker")
     async def run(self, callback_event: asyncio.Event) -> None:
         await super().run(callback_event)
         if callback_event:

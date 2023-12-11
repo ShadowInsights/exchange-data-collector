@@ -1,8 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from decimal import Decimal
 from sqlalchemy import DECIMAL, DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID as pg_UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -36,5 +36,5 @@ class OrderBookAnomalyModel(BaseModel):
         DateTime(timezone=True),
         nullable=False,
         default=func.now(),
-        onupdate=func.now()
+        onupdate=func.now(),
     )

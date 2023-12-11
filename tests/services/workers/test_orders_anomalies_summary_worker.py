@@ -9,8 +9,8 @@ from app.common.processor import Processor
 from app.services.collectors.clients.schemas.common import OrderBookEvent
 from app.services.collectors.common import Collector
 from app.services.workers.orders_anomalies_summary_worker import (
-    OrdersAnomaliesSummaryWorker,
     OrdersAnomaliesSummary,
+    OrdersAnomaliesSummaryWorker,
 )
 from app.utils.event_utils import EventHandler
 

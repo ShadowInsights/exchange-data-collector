@@ -21,10 +21,7 @@ from app.services.messengers.orders_anomalies_summary_messenger import (
     OrdersAnomaliesSummaryNotification,
 )
 from app.services.workers.common import Worker
-from app.utils.math_utils import (
-    calculate_decimal_ratio,
-    numbers_have_same_sign,
-)
+from app.utils.math_utils import calculate_decimal_ratio, numbers_have_same_sign
 from app.utils.scheduling_utils import SetInterval
 
 
@@ -50,7 +47,10 @@ class OrdersAnomaliesSummaryWorker(Worker):
         # TODO: add support for different executor types
         self._executor_factory = executor_factory
 
-    @SetInterval(settings.ORDERS_ANOMALIES_SUMMARY_JOB_INTERVAL)
+    @SetInterval(
+        settings.ORDERS_ANOMALIES_SUMMARY_JOB_INTERVAL,
+        name="Orders anomalies summary worker",
+    )
     async def run(self, callback_event: asyncio.Event | None = None) -> None:
         await super().run(callback_event)
         if callback_event:

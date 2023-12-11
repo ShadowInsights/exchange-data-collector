@@ -75,7 +75,10 @@ class Maestro:
         pairs = await self._retrieve_and_assign_pairs()
         await self._start_processors(pairs)
 
-    @SetInterval(settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL)
+    @SetInterval(
+        settings.MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL,
+        name="Maestro liveness updater",
+    )
     async def _liveness_updater_loop(
         self, callback_event: asyncio.Event | None = None
     ) -> None:

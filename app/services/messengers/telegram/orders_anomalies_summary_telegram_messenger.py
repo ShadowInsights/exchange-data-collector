@@ -12,9 +12,7 @@ from app.services.messengers.orders_anomalies_summary_messenger import (
     OrdersAnomaliesSummaryMessenger,
     OrdersAnomaliesSummaryNotification,
 )
-from app.services.messengers.telegram.telegram_messenger import (
-    TelegramMessenger,
-)
+from app.services.messengers.telegram.telegram_messenger import TelegramMessenger
 from app.utils.string_utils import (
     add_comma_every_n_symbols,
     replace_char,
