@@ -115,7 +115,7 @@ class OrderBookTelegramMessenger(OrderBookMessenger, TelegramMessenger):
 
         description = (
             f"{emoji} {formatted_quantity} #{base_token} ({formatted_order_liquidity} #{pair_token})"
-            f" anomaly was {destiny} #{exchange.name} #{formatted_pair}"
+            f" anomaly {anomaly.type} was {destiny} #{exchange.name} #{formatted_pair}"
         )
 
         fields = [

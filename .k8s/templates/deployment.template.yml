@@ -169,6 +169,11 @@ spec:
                 configMapKeyRef:
                   key: ORDERS_ANOMALIES_SUMMARY_COMPARATIVE_ARRAY_SIZE
                   name: exchange-data-collector-config
+            - name: ORDERS_ANOMALIES_SUMMARY_JOB_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  key: ORDERS_ANOMALIES_SUMMARY_JOB_INTERVAL
+                  name: exchange-data-collector-config
             - name: DISCORD_ORDER_ANOMALIES_SUMMARY_EMBED_COLOR
               valueFrom:
                 configMapKeyRef:

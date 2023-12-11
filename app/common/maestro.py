@@ -42,6 +42,7 @@ from app.services.messengers.telegram.orders_anomalies_summary_telegram_messenge
 from app.services.messengers.telegram.volume_telegram_messenger import (
     VolumeTelegramMessenger,
 )
+from app.services.workers.common import Worker
 from app.services.workers.db_worker import DbWorker
 from app.services.workers.orders_anomalies_summary_worker import (
     OrdersAnomaliesSummaryWorker,
@@ -175,12 +176,7 @@ class Maestro:
     def _create_default_workers(
         self, processor: Processor, event_handler: EventHandler
     ) -> None:
-        default_workers: list[
-            DbWorker
-            | VolumeWorker
-            | OrdersWorker
-            | OrdersAnomaliesSummaryWorker
-        ] = [
+        default_workers: list[Worker] = [
             DbWorker(processor=processor),
             VolumeWorker(
                 processor=processor,
