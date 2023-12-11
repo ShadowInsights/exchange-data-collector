@@ -8,15 +8,22 @@ from app.db.models.pair import PairModel
 from app.db.repositories.exchange_repository import find_exchange_by_id
 from app.db.repositories.pair_repository import find_pair_by_id
 from app.services.messengers.common import BaseMessage, Field
-from app.services.messengers.telegram.telegram_messenger import TelegramMessenger
-from app.services.messengers.volume_messenger import VolumeMessenger, VolumeNotification
+from app.services.messengers.telegram.telegram_messenger import (
+    TelegramMessenger,
+)
+from app.services.messengers.volume_messenger import (
+    VolumeMessenger,
+    VolumeNotification,
+)
 from app.utils.string_utils import (
     add_comma_every_n_symbols,
     replace_char,
     to_title_case,
 )
 
-EMOJI = "💰"
+EMOJI = "📊"
+DEPTH_INCREASED = "⬆️"
+DEPTH_DECREASED = "⬇️"
 
 
 class VolumeTelegramMessenger(VolumeMessenger, TelegramMessenger):
@@ -66,6 +73,12 @@ class VolumeTelegramMessenger(VolumeMessenger, TelegramMessenger):
         else:
             depth_change_vector = "increased"
 
+        depth_vector_emoji = (
+            DEPTH_INCREASED
+            if depth_change_vector == "increased"
+            else DEPTH_DECREASED
+        )
+
         formatted_pair = replace_char(pair.symbol, "/", "")
 
         [
@@ -83,7 +96,9 @@ class VolumeTelegramMessenger(VolumeMessenger, TelegramMessenger):
         )
 
         description = (
-            f"{EMOJI} #{formatted_pair} volume {depth_change_vector} to {formatted_current_average_volume} "
+            f"{EMOJI}{depth_vector_emoji} #{formatted_pair} "
+            f"depth {depth_change_vector} "
+            f"to {formatted_current_average_volume} "
             f"with {formatted_deviation} deviation from average - {formatted_previous_liquidity} "
             f"#{exchange_name}"
         )

@@ -12,11 +12,18 @@ from app.services.messengers.discord.order_book_discord_messenger import (
     OrderAnomalyNotification,
 )
 from app.services.messengers.order_book_messenger import OrderBookMessenger
-from app.services.messengers.telegram.telegram_messenger import TelegramMessenger
-from app.utils.string_utils import add_comma_every_n_symbols, replace_char
+from app.services.messengers.telegram.telegram_messenger import (
+    TelegramMessenger,
+)
+from app.utils.string_utils import (
+    add_comma_every_n_symbols,
+    replace_char,
+    round_decimal_to_first_non_zero,
+    to_title_case,
+)
 
-BID_EMOJI = "📉"
-ASK_EMOJI = "📈"
+BID_EMOJI = "📈"
+ASK_EMOJI = "📉"
 CANCELLATION_EMOJI = "✖"
 REALIZATION_EMOJI = "✔️"
 
@@ -71,7 +78,7 @@ class OrderBookTelegramMessenger(OrderBookMessenger, TelegramMessenger):
         await self.__send_anomaly_detection(
             anomalies=anomalies,
             emoji=CANCELLATION_EMOJI,
-            destiny="CANCELLED",
+            destiny="cancelled",
             pair_id=pair_id,
         )
 
@@ -81,7 +88,7 @@ class OrderBookTelegramMessenger(OrderBookMessenger, TelegramMessenger):
         await self.__send_anomaly_detection(
             anomalies=anomalies,
             emoji=REALIZATION_EMOJI,
-            destiny="REALIZED",
+            destiny="realized",
             pair_id=pair_id,
         )
 
@@ -101,10 +108,13 @@ class OrderBookTelegramMessenger(OrderBookMessenger, TelegramMessenger):
         pair: PairModel,
         exchange: ExchangeModel,
     ) -> BaseMessage:
+        formatted_exchange_name = to_title_case(str(exchange.name))
+
         [
             formatted_quantity,
             formatted_liquidity,
             formatted_order_liquidity,
+            formatted_price,
         ] = self._format_anomaly_fields(anomaly=anomaly)
 
         base_token = pair.symbol.split("/")[0]
@@ -113,7 +123,7 @@ class OrderBookTelegramMessenger(OrderBookMessenger, TelegramMessenger):
 
         description = (
             f"{emoji} {formatted_quantity} #{base_token} ({formatted_order_liquidity} #{pair_token})"
-            f" anomaly {anomaly.type} was {destiny} #{exchange.name} #{formatted_pair}"
+            f" anomaly {anomaly.type} was {destiny} #{formatted_exchange_name} #{formatted_pair}"
         )
 
         fields = [
@@ -121,14 +131,15 @@ class OrderBookTelegramMessenger(OrderBookMessenger, TelegramMessenger):
                 name="Average liquidity",
                 value=formatted_liquidity,
                 inline=False,
-            )
+            ),
+            Field(name="Price", value=formatted_price, inline=False),
         ]
 
         return BaseMessage(description=description, fields=fields)
 
     def _format_anomaly_fields(
         self, anomaly: OrderAnomalyNotification
-    ) -> Tuple[str, str, str]:
+    ) -> Tuple[str, str, str, str]:
         formatted_quantity = add_comma_every_n_symbols(
             f"{anomaly.quantity: .2f}"
         )
@@ -138,9 +149,13 @@ class OrderBookTelegramMessenger(OrderBookMessenger, TelegramMessenger):
         formatted_order_liquidity = add_comma_every_n_symbols(
             f"{anomaly.order_liquidity: .2f}"
         )
+        formatted_price = add_comma_every_n_symbols(
+            round_decimal_to_first_non_zero(anomaly.price)
+        )
 
         return (
             formatted_quantity,
             formatted_liquidity,
             formatted_order_liquidity,
+            formatted_price,
         )
