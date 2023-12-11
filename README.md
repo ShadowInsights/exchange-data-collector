@@ -16,12 +16,6 @@ poetry shell
 poetry install
 ```
 
-### Run Docker to launch ClickHouse
-
-```sh
-docker-compose up -d
-```
-
 ### Run migrations
 
 ```sh

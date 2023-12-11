@@ -23,13 +23,11 @@ class SetInterval:
                     callback_event = asyncio.Event()
                     start_time = get_current_time()
 
-                    task = asyncio.create_task(
+                    asyncio.create_task(
                         func(*args, callback_event=callback_event, **kwargs)
                     )
                     await callback_event.wait()
                     callback_event.clear()
-
-                    await task
 
                     time_spent = get_current_time() - start_time
                     if time_spent < self._interval_time:
