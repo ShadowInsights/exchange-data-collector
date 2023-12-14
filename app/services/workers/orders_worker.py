@@ -120,6 +120,10 @@ class OrdersWorker(Worker):
         await self.__handle_anomalies(order_book)
         await self.__handle_observing_anomalies_destiny(order_book)
 
+        logging.debug(
+            f"Orders processing cycle finished [symbol={self._processor.symbol}]"
+        )
+
     def __group_orders(
         self, order_book: OrderBook, delimiter: Decimal
     ) -> OrderBook:
@@ -139,6 +143,10 @@ class OrdersWorker(Worker):
             )
 
         if filtered_anomalies:
+            logging.info(
+                f"Detected anomalies for [symbol={self._processor.symbol}]"
+                f" [anomalies={filtered_anomalies}]"
+            )
             save_anomalies = self.__save_anomalies(filtered_anomalies)
             send_anomalies = self._send_anomalies(filtered_anomalies)
             await asyncio.gather(save_anomalies, send_anomalies)
@@ -157,6 +165,10 @@ class OrdersWorker(Worker):
 
         tasks: list[asyncio.Task] = []
         if observing_anomalies_destiny.cancelled_anomalies:
+            logging.info(
+                f"Detected cancelled anomalies for [symbol={self._processor.symbol}]"
+                f" [anomalies={observing_anomalies_destiny.cancelled_anomalies}]"
+            )
             await self.__cancel_anomalies(
                 observing_anomalies_destiny.cancelled_anomalies
             )
@@ -165,6 +177,10 @@ class OrdersWorker(Worker):
             )
             tasks.extend(send_anomalies_tasks)
         if observing_anomalies_destiny.realized_anomalies:
+            logging.info(
+                f"Detected realized anomalies for [symbol={self._processor.symbol}]"
+                f" [anomalies={observing_anomalies_destiny.realized_anomalies}]"
+            )
             await self.__confirm_anomalies(
                 observing_anomalies_destiny.realized_anomalies
             )

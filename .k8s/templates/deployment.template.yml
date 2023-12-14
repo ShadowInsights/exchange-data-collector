@@ -179,3 +179,28 @@ spec:
                 configMapKeyRef:
                   key: DISCORD_ORDER_ANOMALIES_SUMMARY_EMBED_COLOR
                   name: exchange-data-collector-config
+            - name: MAESTRO_MAX_LIVENESS_GAP_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  key: MAESTRO_MAX_LIVENESS_GAP_SECONDS
+                  name: exchange-data-collector-config
+            - name: MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  key: MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL
+                  name: exchange-data-collector-config
+            - name: MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  key: MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL
+                  name: exchange-data-collector-config
+            - name: MAESTRO_PAIRS_RETRIEVAL_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  key: MAESTRO_PAIRS_RETRIEVAL_INTERVAL
+                  name: exchange-data-collector-config
+            - name: ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO
+              valueFrom:
+                configMapKeyRef:
+                  key: ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO
+                  name: exchange-data-collector-config

@@ -25,6 +25,11 @@ poetry run alembic upgrade head
 ### Run the application
 
 ```sh
-export PYTHONPATH="$PYTHONPATH:$(pwd)"
-poetry run python ./app/main.py
+python -m app.main
+```
+
+### Run the application with dubug mode
+
+```sh
+python -m app.main --debug
 ```

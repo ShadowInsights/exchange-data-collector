@@ -57,8 +57,8 @@ class Maestro:
     def __init__(
         self,
         launch_id: UUID,
-        maestro_pairs_retrieval_interval: int = settings.MAESTRO_PAIRS_RETRIEVAL_INTERVAL,
-        maestro_max_liveness_gap_minutes: int = settings.MAESTRO_MAX_LIVENESS_GAP_MINUTES,
+        maestro_pairs_retrieval_interval: float = settings.MAESTRO_PAIRS_RETRIEVAL_INTERVAL,
+        maestro_max_liveness_gap_minutes: int = settings.MAESTRO_MAX_LIVENESS_GAP_SECONDS,
     ) -> None:
         self._launch_id = launch_id
         self._maestro_pairs_retrieval_interval = (

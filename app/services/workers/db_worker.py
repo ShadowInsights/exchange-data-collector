@@ -70,7 +70,9 @@ class DbWorker(Worker):
             self._stamp_id += 1
 
             # Log the order book
-            self.__log_order_book(order_book_json)
+            logging.debug(
+                f"Saved grouped order book [symbol={self._processor.symbol}]"
+            )
         except Exception as e:
             logging.error(f"Error: {e} [symbol={self._processor.symbol}]")
 
@@ -85,8 +87,3 @@ class DbWorker(Worker):
         }
 
         return json.dumps(asdict(OrderBookJson(a=asks, b=bids)))
-
-    def __log_order_book(self, order_book_json: str) -> None:
-        logging.debug(
-            f"Saved grouped order book: {order_book_json} [symbol={self._processor.symbol}]"
-        )

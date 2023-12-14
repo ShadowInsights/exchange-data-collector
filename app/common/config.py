@@ -1,18 +1,8 @@
-import logging
-
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
 # Load environment variables from .env file
 load_dotenv()
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(filename)s] %(levelname)s %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-    ],
-)
 
 
 class Settings(BaseSettings):
@@ -21,19 +11,19 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int
     POSTGRES_USERNAME: str
     POSTGRES_PASSWORD: str
-    POSTGRES_POOL_SIZE: int = 10
-    POSTGRES_MAX_OVERFLOW: int = 20
-    POSTGRES_POOL_TIMEOUT: int = 30
-    POSTGRES_POOL_RECYCLE: int = 1800
+    POSTGRES_POOL_SIZE: int
+    POSTGRES_MAX_OVERFLOW: int
+    POSTGRES_POOL_TIMEOUT: int
+    POSTGRES_POOL_RECYCLE: int
 
-    IS_TRADING_SESSION_VERIFICATION_REQUIRED: bool = False
+    IS_TRADING_SESSION_VERIFICATION_REQUIRED: bool
 
-    VOLUME_WORKER_JOB_INTERVAL: int = 5
-    DB_WORKER_JOB_INTERVAL: int
-    ORDERS_WORKER_JOB_INTERVAL: int = 1
-    MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL: int = 1
-    MAESTRO_PAIRS_RETRIEVAL_INTERVAL: int = 1
-    ORDERS_ANOMALIES_SUMMARY_JOB_INTERVAL: int = 1
+    VOLUME_WORKER_JOB_INTERVAL: float
+    DB_WORKER_JOB_INTERVAL: float
+    ORDERS_WORKER_JOB_INTERVAL: float
+    MAESTRO_LIVENESS_UPDATER_JOB_INTERVAL: float
+    MAESTRO_PAIRS_RETRIEVAL_INTERVAL: float
+    ORDERS_ANOMALIES_SUMMARY_JOB_INTERVAL: float
 
     VOLUME_ANOMALY_RATIO: float
     VOLUME_COMPARATIVE_ARRAY_SIZE: int
@@ -42,14 +32,14 @@ class Settings(BaseSettings):
     ORDERS_ANOMALIES_SUMMARY_RATIO: float
     ORDERS_ANOMALIES_SUMMARY_COMPARATIVE_ARRAY_SIZE: int
 
-    TOP_N_ORDERS: int = 15
-    ORDER_ANOMALY_MULTIPLIER: float = 10
-    ANOMALIES_DETECTION_TTL: int = 900
-    ANOMALIES_OBSERVING_TTL: int = 3600
-    ANOMALIES_OBSERVING_RATIO: float = 0.2
-    ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO: float = 2
-    MAXIMUM_ORDER_BOOK_ANOMALIES: int = 4
-    OBSERVING_SAVED_LIMIT_ANOMALIES_RATIO: float = 0.2
+    TOP_N_ORDERS: int
+    ORDER_ANOMALY_MULTIPLIER: float
+    ANOMALIES_DETECTION_TTL: int
+    ANOMALIES_OBSERVING_TTL: int
+    ANOMALIES_OBSERVING_RATIO: float
+    ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO: float
+    MAXIMUM_ORDER_BOOK_ANOMALIES: int
+    OBSERVING_SAVED_LIMIT_ANOMALIES_RATIO: float
 
     DISCORD_WEBHOOKS: str
     DISCORD_DEPTH_EMBED_COLOR: str
@@ -62,7 +52,9 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKENS: str
     TELEGRAM_CHAT_IDS: str
 
-    MAESTRO_MAX_LIVENESS_GAP_MINUTES: int = 1
+    MAESTRO_MAX_LIVENESS_GAP_SECONDS: int
+
+    LOGGING_LEVEL: int = 20
 
 
 settings = Settings()

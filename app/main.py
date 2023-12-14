@@ -4,10 +4,19 @@ import uuid
 
 from prometheus_client import start_http_server
 
+from app.common.config import settings
 from app.common.maestro import Maestro
 
+logging.basicConfig(
+    level=settings.LOGGING_LEVEL,
+    format="%(asctime)s [%(filename)s] %(levelname)s %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+    ],
+)
 
-def start_metrics_server() -> None:
+
+def _start_metrics_server() -> None:
     logging.info("Starting metrics server")
     start_http_server(9010)
     logging.info("Metrics server started")
@@ -23,7 +32,7 @@ if __name__ == "__main__":
     logging.info("Starting application...")
 
     try:
-        start_metrics_server()
+        _start_metrics_server()
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("\nInterrupted. Closing application...")
