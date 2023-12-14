@@ -44,6 +44,26 @@ spec:
                 configMapKeyRef:
                   key: POSTGRES_USERNAME
                   name: exchange-data-collector-config
+            - name: POSTGRES_POOL_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  key: POSTGRES_POOL_SIZE
+                  name: exchange-data-collector-config
+            - name: POSTGRES_MAX_OVERFLOW
+              valueFrom:
+                configMapKeyRef:
+                  key: POSTGRES_MAX_OVERFLOW
+                  name: exchange-data-collector-config
+            - name: POSTGRES_POOL_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  key: POSTGRES_POOL_TIMEOUT
+                  name: exchange-data-collector-config
+            - name: POSTGRES_POOL_RECYCLE
+              valueFrom:
+                configMapKeyRef:
+                  key: POSTGRES_POOL_RECYCLE
+                  name: exchange-data-collector-config
             - name: VOLUME_WORKER_JOB_INTERVAL
               valueFrom:
                 configMapKeyRef:
