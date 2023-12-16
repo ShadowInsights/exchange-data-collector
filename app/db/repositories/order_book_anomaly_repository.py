@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
@@ -17,22 +17,26 @@ async def create_order_book_anomalies(
     return order_book_anomalies
 
 
-async def merge_and_cancel_anomalies(
-    session: AsyncSession, anomalies_to_cancel: list[OrderBookAnomalyModel]
+async def cancel_anomalies_list(
+    session: AsyncSession, anomalies_to_cancel: list[UUID]
 ) -> None:
-    for anomaly in anomalies_to_cancel:
-        merged_anomaly = await session.merge(anomaly)
-        merged_anomaly.is_cancelled = True
-    await session.commit()
+    query = (
+        update(OrderBookAnomalyModel)
+        .where(OrderBookAnomalyModel.id.in_(anomalies_to_cancel))
+        .values(is_cancelled=True)
+    )
+    await session.execute(query)
 
 
-async def merge_and_confirm_anomalies(
-    session: AsyncSession, anomalies_to_confirm: list[OrderBookAnomalyModel]
+async def confirm_anomalies_list(
+    session: AsyncSession, anomalies_to_confirm: list[UUID]
 ) -> None:
-    for anomaly in anomalies_to_confirm:
-        merged_anomaly = await session.merge(anomaly)
-        merged_anomaly.is_cancelled = False
-    await session.commit()
+    query = (
+        update(OrderBookAnomalyModel)
+        .where(OrderBookAnomalyModel.id.in_(anomalies_to_confirm))
+        .values(is_confirmed=True)
+    )
+    await session.execute(query)
 
 
 async def get_order_book_anomalies_sum_in_date_range(

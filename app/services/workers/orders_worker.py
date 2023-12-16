@@ -3,6 +3,7 @@ import copy
 import logging
 from concurrent.futures import Executor, ThreadPoolExecutor
 from typing import Dict, List, Literal, NamedTuple, Set
+from uuid import UUID
 
 from _decimal import Decimal
 
@@ -11,9 +12,9 @@ from app.common.database import get_async_db
 from app.common.processor import Processor
 from app.db.models.order_book_anomaly import OrderBookAnomalyModel
 from app.db.repositories.order_book_anomaly_repository import (
+    cancel_anomalies_list,
+    confirm_anomalies_list,
     create_order_book_anomalies,
-    merge_and_cancel_anomalies,
-    merge_and_confirm_anomalies,
 )
 from app.services.collectors.clients.schemas.common import OrderBook
 from app.services.messengers.order_book_messenger import (
@@ -27,6 +28,16 @@ from app.utils.time_utils import get_current_time
 
 
 class OrderAnomaly(NamedTuple):
+    price: Decimal
+    quantity: Decimal
+    order_liquidity: Decimal
+    average_liquidity: Decimal
+    position: int
+    type: Literal["ask", "bid"]
+
+
+class OrderAnomalySaved(NamedTuple):
+    id: UUID
     price: Decimal
     quantity: Decimal
     order_liquidity: Decimal
@@ -53,8 +64,8 @@ class PositionedOrder(NamedTuple):
 
 
 class ObservingAnomaliesDestiny(NamedTuple):
-    cancelled_anomalies: list[OrderAnomaly]
-    realized_anomalies: list[OrderAnomaly]
+    cancelled_anomalies: list[OrderAnomalySaved]
+    realized_anomalies: list[OrderAnomalySaved]
 
 
 class OrdersWorker(Worker):
@@ -78,7 +89,7 @@ class OrdersWorker(Worker):
         self._detected_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
         self._observing_anomalies: Dict[AnomalyKey, OrderAnomalyInTime] = {}
         self._observing_saved_limit_anomalies: Dict[
-            AnomalyKey, OrderAnomaly
+            AnomalyKey, OrderAnomalySaved
         ] = {}
         self._orders_anomaly_multiplier = Decimal(order_anomaly_multiplier)
         self._anomalies_detection_ttl = anomalies_detection_ttl
@@ -254,35 +265,50 @@ class OrdersWorker(Worker):
             anomalies
         )
         async with get_async_db() as session:
-            await create_order_book_anomalies(session, order_book_anomalies)
-        for anomaly in anomalies:
+            order_book_anomalies_models = await create_order_book_anomalies(
+                session, order_book_anomalies
+            )
+
+        for anomaly in order_book_anomalies_models:
             if anomaly.position != 0:
                 self._observing_saved_limit_anomalies[
                     AnomalyKey(anomaly.price, anomaly.type)
-                ] = anomaly
+                ] = OrderAnomalySaved(
+                    id=anomaly.id,
+                    price=anomaly.price,
+                    quantity=anomaly.quantity,
+                    order_liquidity=anomaly.order_liquidity,
+                    average_liquidity=anomaly.average_liquidity,
+                    position=anomaly.position,
+                    type=anomaly.type,
+                )
 
     async def __cancel_anomalies(
-        self, anomalies_to_cancel: List[OrderAnomaly]
+        self, anomalies_to_cancel: List[OrderAnomalySaved]
     ) -> None:
         anomalies_model_to_cancel = (
-            self.__order_anomaly_to_order_anomaly_model(anomalies_to_cancel)
+            self.__order_anomaly_saved_to_order_anomaly_model(
+                order_anomalies=anomalies_to_cancel, is_cancelled=True
+            )
         )
 
         async with get_async_db() as session:
-            await merge_and_cancel_anomalies(
-                session, anomalies_model_to_cancel
+            await cancel_anomalies_list(
+                session, [anomaly.id for anomaly in anomalies_model_to_cancel]
             )
 
     async def __confirm_anomalies(
-        self, anomalies_to_confirm: List[OrderAnomaly]
+        self, anomalies_to_confirm: List[OrderAnomalySaved]
     ) -> None:
         anomalies_model_to_confirm = (
-            self.__order_anomaly_to_order_anomaly_model(anomalies_to_confirm)
+            self.__order_anomaly_saved_to_order_anomaly_model(
+                order_anomalies=anomalies_to_confirm, is_cancelled=False
+            )
         )
 
         async with get_async_db() as session:
-            await merge_and_confirm_anomalies(
-                session, anomalies_model_to_confirm
+            await confirm_anomalies_list(
+                session, [anomaly.id for anomaly in anomalies_model_to_confirm]
             )
 
     async def _send_anomalies(self, anomalies: List[OrderAnomaly]) -> None:
@@ -307,7 +333,7 @@ class OrdersWorker(Worker):
             )
 
     def _send_canceled_anomalies(
-        self, canceled_anomalies: List[OrderAnomaly]
+        self, canceled_anomalies: List[OrderAnomalySaved]
     ) -> list[asyncio.Task]:
         tasks = []
         order_anomaly_notifications = [
@@ -334,7 +360,7 @@ class OrdersWorker(Worker):
         return []
 
     def _send_realized_anomalies(
-        self, realized_anomalies: List[OrderAnomaly]
+        self, realized_anomalies: List[OrderAnomalySaved]
     ) -> list[asyncio.Task]:
         tasks = []
         order_anomaly_notifications = [
@@ -619,6 +645,25 @@ class OrdersWorker(Worker):
                 position=anomaly.position,
                 type=anomaly.type,
                 is_cancelled=(False if anomaly.position == 0 else None),
+            )
+            for anomaly in order_anomalies
+        ]
+
+    def __order_anomaly_saved_to_order_anomaly_model(
+        self, order_anomalies: list[OrderAnomalySaved], is_cancelled: bool
+    ) -> list[OrderBookAnomalyModel]:
+        return [
+            OrderBookAnomalyModel(
+                id=anomaly.id,
+                launch_id=self._processor.launch_id,
+                pair_id=self._processor.pair_id,
+                price=anomaly.price,
+                quantity=anomaly.quantity,
+                order_liquidity=anomaly.order_liquidity,
+                average_liquidity=anomaly.average_liquidity,
+                position=anomaly.position,
+                type=anomaly.type,
+                is_cancelled=is_cancelled,
             )
             for anomaly in order_anomalies
         ]

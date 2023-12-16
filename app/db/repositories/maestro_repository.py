@@ -50,9 +50,11 @@ async def find_all_not_collecting_pairs_for_update(
         .limit(1)
     )
     if no_maestro_pairs.scalar_one_or_none():
-        query = select(PairModel.id).where(
-            ~PairModel.id.in_(select(associated_pairs_subquery))
-        ).with_for_update()
+        query = (
+            select(PairModel.id)
+            .where(~PairModel.id.in_(select(associated_pairs_subquery)))
+            .with_for_update()
+        )
 
         raws = await session.execute(query)
 
@@ -77,9 +79,14 @@ async def find_all_not_collecting_pairs_for_update(
         if not old_maestro_id:
             return PairsForUpdateResult(pair_ids=[])
 
-        query = select(maestro_pair_association.c.pair_id).where(
-            maestro_pair_association.c.maestro_instance_id == old_maestro_id
-        ).with_for_update()
+        query = (
+            select(maestro_pair_association.c.pair_id)
+            .where(
+                maestro_pair_association.c.maestro_instance_id
+                == old_maestro_id
+            )
+            .with_for_update()
+        )
         raws = await session.execute(query)
 
         return CollectingPairsForUpdateResult(

@@ -13,6 +13,7 @@ from app.services.workers.orders_worker import (
     AnomalyKey,
     OrderAnomaly,
     OrderAnomalyInTime,
+    OrderAnomalySaved,
     OrdersWorker,
 )
 from app.utils.event_utils import EventHandler
@@ -1457,7 +1458,12 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_order_b
 @patch(
     "app.services.workers.orders_worker.get_current_time",
 )
+@patch(
+    "app.services.workers.orders_worker.confirm_anomalies_list",
+    new_callable=AsyncMock,
+)
 async def test_non_first_already_observing_anomalies_for_db_saving_after_expiration_of_observing_ttl(
+    mock_confirm_anomalies_list: AsyncMock,
     mock_get_current_time: Mock,
     mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
@@ -1465,6 +1471,28 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
 ) -> None:
     current_time = 2.5
     mock_get_current_time.return_value = current_time
+    mock_create_order_book_anomalies.return_value = [
+        OrderBookAnomalyModel(
+            id=UUID("d1f0f0f0-1f0f-1f0f-1f0f-1f0f1f0f1f0f"),
+            price=Decimal("27500.0"),
+            quantity=Decimal("8.0"),
+            order_liquidity=Decimal("220000.00"),
+            average_liquidity=Decimal("27433.33333333333333333333333"),
+            type="ask",
+            position=2,
+            is_cancelled=None,
+        ),
+        OrderBookAnomalyModel(
+            id=UUID("d1f0f0f0-1f0f-1f0f-1f0f-1f0f1f0f1f0f"),
+            price=Decimal("27000.0"),
+            quantity=Decimal("8.2"),
+            order_liquidity=Decimal("221400.00"),
+            average_liquidity=Decimal("36100.00"),
+            type="bid",
+            position=2,
+            is_cancelled=None,
+        ),
+    ]
     processor._order_book = OrderBook(
         b={
             Decimal("27200.0"): Decimal("1.0"),
@@ -1617,7 +1645,12 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
 @patch(
     "app.services.workers.orders_worker.get_current_time",
 )
+@patch(
+    "app.services.workers.orders_worker.confirm_anomalies_list",
+    new_callable=AsyncMock,
+)
 async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
+    mock_confirm_anomalies_list: AsyncMock,
     mock_get_current_time: Mock,
     mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
@@ -1625,6 +1658,28 @@ async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
 ) -> None:
     current_time = 2.5
     mock_get_current_time.return_value = current_time
+    mock_create_order_book_anomalies.return_value = [
+        OrderBookAnomalyModel(
+            id=UUID("d1f0f0f0-1f0f-1f0f-1f0f-1f0f1f0f1f0f"),
+            price=Decimal("27500.0"),
+            quantity=Decimal("8.0"),
+            order_liquidity=Decimal("220000.00"),
+            average_liquidity=Decimal("27433.33333333333333333333333"),
+            type="ask",
+            position=2,
+            is_cancelled=None,
+        ),
+        OrderBookAnomalyModel(
+            id=UUID("d1f0f0f0-1f0f-1f0f-1f0f-1f0f1f0f1f0f"),
+            price=Decimal("27000.0"),
+            quantity=Decimal("8.2"),
+            order_liquidity=Decimal("221400.00"),
+            average_liquidity=Decimal("36100.00"),
+            type="bid",
+            position=2,
+            is_cancelled=None,
+        ),
+    ]
     processor._order_book = OrderBook(
         b={
             Decimal("27200.0"): Decimal("1.0"),
@@ -1696,7 +1751,7 @@ async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
     "app.services.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.merge_and_cancel_anomalies",
+    "app.services.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1705,7 +1760,7 @@ async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
 )
 async def test_non_first_anomaly_did_not_canceled(
     mock_send_anomaly_cancellations: AsyncMock,
-    mock_merge_and_cancel_anomalies: AsyncMock,
+    mock_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
     mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
@@ -1766,7 +1821,7 @@ async def test_non_first_anomaly_did_not_canceled(
     assert expected_ask_anomaly_key in worker._observing_saved_limit_anomalies
     assert expected_bid_anomaly_key in worker._observing_saved_limit_anomalies
     assert mock_send_anomaly_cancellations.call_count == 0
-    assert mock_merge_and_cancel_anomalies.call_count == 0
+    assert mock_cancel_anomalies.call_count == 0
 
 
 @patch(
@@ -1781,7 +1836,7 @@ async def test_non_first_anomaly_did_not_canceled(
     "app.services.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.merge_and_cancel_anomalies",
+    "app.services.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1789,7 +1844,7 @@ async def test_non_first_anomaly_did_not_canceled(
 )
 async def test_non_first_anomaly_canceled(
     mock_send_anomaly_cancellations: Mock,
-    mock_merge_and_cancel_anomalies: AsyncMock,
+    mock_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
     mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
@@ -1826,7 +1881,8 @@ async def test_non_first_anomaly_canceled(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
@@ -1834,7 +1890,8 @@ async def test_non_first_anomaly_canceled(
             position=2,
             type="ask",
         ),
-        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
@@ -1848,7 +1905,7 @@ async def test_non_first_anomaly_canceled(
 
     assert len(worker._observing_saved_limit_anomalies) == 0
     assert mock_send_anomaly_cancellations.call_count == 1
-    assert mock_merge_and_cancel_anomalies.call_count == 1
+    assert mock_cancel_anomalies.call_count == 1
 
     order_anomaly_cancellation_call = (
         mock_send_anomaly_cancellations.call_args_list[0]
@@ -1856,7 +1913,8 @@ async def test_non_first_anomaly_canceled(
 
     order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
@@ -1864,7 +1922,8 @@ async def test_non_first_anomaly_canceled(
             position=2,
             type="ask",
         ),
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
@@ -1889,7 +1948,7 @@ async def test_non_first_anomaly_canceled(
     "app.services.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.merge_and_cancel_anomalies",
+    "app.services.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
@@ -1897,7 +1956,7 @@ async def test_non_first_anomaly_canceled(
 )
 async def test_valid_anomaly_canceled(
     mock_send_anomaly_cancellations: Mock,
-    mock_merge_and_cancel_anomalies: AsyncMock,
+    mock_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
     mock_order_book_discord_messenger: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
@@ -1929,7 +1988,8 @@ async def test_valid_anomaly_canceled(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
@@ -1937,7 +1997,8 @@ async def test_valid_anomaly_canceled(
             position=2,
             type="ask",
         ),
-        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
@@ -1951,7 +2012,7 @@ async def test_valid_anomaly_canceled(
 
     assert len(worker._observing_saved_limit_anomalies) == 0
     assert mock_send_anomaly_cancellations.call_count == 1
-    assert mock_merge_and_cancel_anomalies.call_count == 1
+    assert mock_cancel_anomalies.call_count == 1
 
     order_anomaly_cancellation_call = (
         mock_send_anomaly_cancellations.call_args_list[0]
@@ -1959,7 +2020,8 @@ async def test_valid_anomaly_canceled(
 
     order_anomaly_cancellation = order_anomaly_cancellation_call[0][0]
     expected_order_anomaly_cancellation = [
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
@@ -1967,7 +2029,8 @@ async def test_valid_anomaly_canceled(
             position=2,
             type="ask",
         ),
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
@@ -1992,14 +2055,14 @@ async def test_valid_anomaly_canceled(
     "app.services.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.merge_and_cancel_anomalies",
+    "app.services.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
     "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 @patch(
-    "app.services.workers.orders_worker.merge_and_confirm_anomalies",
+    "app.services.workers.orders_worker.confirm_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
@@ -2007,9 +2070,9 @@ async def test_valid_anomaly_canceled(
 )
 async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     mock_send_anomalies_realizations: Mock,
-    mock_merge_and_confirm_anomalies: AsyncMock,
+    mock_confirm_anomalies: AsyncMock,
     mock_send_anomaly_cancellations: Mock,
-    mock_merge_and_cancel_anomalies: AsyncMock,
+    mock_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
     mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
@@ -2035,7 +2098,8 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
@@ -2043,7 +2107,8 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
             position=2,
             type="ask",
         ),
-        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
@@ -2061,7 +2126,8 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     order_anomaly_realization = realization_call[0][0]
 
     expected_order_anomaly_cancellation = [
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
@@ -2071,7 +2137,8 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
         )
     ]
     expected_order_anomaly_realization = [
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
@@ -2084,11 +2151,11 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     assert len(worker._observing_saved_limit_anomalies) == 0
 
     assert mock_send_anomaly_cancellations.call_count == 1
-    assert mock_merge_and_cancel_anomalies.call_count == 1
+    assert mock_cancel_anomalies.call_count == 1
     assert order_anomaly_cancellation == expected_order_anomaly_cancellation
 
     assert mock_send_anomalies_realizations.call_count == 1
-    assert mock_merge_and_confirm_anomalies.call_count == 1
+    assert mock_confirm_anomalies.call_count == 1
     assert order_anomaly_realization == expected_order_anomaly_realization
 
 
@@ -2104,14 +2171,14 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     "app.services.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.merge_and_cancel_anomalies",
+    "app.services.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
     "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 @patch(
-    "app.services.workers.orders_worker.merge_and_confirm_anomalies",
+    "app.services.workers.orders_worker.confirm_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
@@ -2119,9 +2186,9 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
 )
 async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
     mock_send_anomalies_realizations: Mock,
-    mock_merge_and_confirm_anomalies: AsyncMock,
+    mock_confirm_anomalies: AsyncMock,
     mock_send_anomaly_cancellations: Mock,
-    mock_merge_and_cancel_anomalies: AsyncMock,
+    mock_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
     mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
@@ -2147,7 +2214,8 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27500.0"), type="ask"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
@@ -2155,7 +2223,8 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
             position=2,
             type="ask",
         ),
-        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27000.0"), type="bid"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
@@ -2173,7 +2242,8 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
     order_anomaly_realization = realization_call[0][0]
 
     expected_order_anomaly_cancellation = [
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27500.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("247500.00"),
@@ -2183,7 +2253,8 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
         )
     ]
     expected_order_anomaly_realization = [
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27000.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("243000.00"),
@@ -2196,11 +2267,11 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
     assert len(worker._observing_saved_limit_anomalies) == 0
 
     assert mock_send_anomaly_cancellations.call_count == 1
-    assert mock_merge_and_cancel_anomalies.call_count == 1
+    assert mock_cancel_anomalies.call_count == 1
     assert order_anomaly_cancellation == expected_order_anomaly_cancellation
 
     assert mock_send_anomalies_realizations.call_count == 1
-    assert mock_merge_and_confirm_anomalies.call_count == 1
+    assert mock_confirm_anomalies.call_count == 1
     assert order_anomaly_realization == expected_order_anomaly_realization
 
 
@@ -2216,14 +2287,14 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
     "app.services.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.merge_and_cancel_anomalies",
+    "app.services.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
     "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 @patch(
-    "app.services.workers.orders_worker.merge_and_confirm_anomalies",
+    "app.services.workers.orders_worker.confirm_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
@@ -2231,9 +2302,9 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
 )
 async def test_valid_anomaly_first_position_realized(
     mock_send_anomalies_realizations: Mock,
-    mock_merge_and_confirm_anomalies: AsyncMock,
+    mock_confirm_anomalies: AsyncMock,
     mock_send_anomaly_cancellations: Mock,
-    mock_merge_and_cancel_anomalies: AsyncMock,
+    mock_cancel_anomalies: AsyncMock,
     mock_get_current_time: Mock,
     mock_send_anomalies: AsyncMock,
     mock_create_order_book_anomalies: AsyncMock,
@@ -2265,7 +2336,8 @@ async def test_valid_anomaly_first_position_realized(
         observing_saved_limit_anomalies_ratio=0.25,
     )
     worker._observing_saved_limit_anomalies = {
-        AnomalyKey(price=Decimal("27300.0"), type="ask"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27300.0"), type="ask"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27300.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("245700.00"),
@@ -2273,7 +2345,8 @@ async def test_valid_anomaly_first_position_realized(
             position=2,
             type="ask",
         ),
-        AnomalyKey(price=Decimal("27200.0"), type="bid"): OrderAnomaly(
+        AnomalyKey(price=Decimal("27200.0"), type="bid"): OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27200.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("244800.00"),
@@ -2288,7 +2361,8 @@ async def test_valid_anomaly_first_position_realized(
     realization_call = mock_send_anomalies_realizations.call_args_list[0]
     order_anomaly_realization = realization_call[0][0]
     expected_order_anomaly_realization = [
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000001"),
             price=Decimal("27300.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("245700.00"),
@@ -2296,7 +2370,8 @@ async def test_valid_anomaly_first_position_realized(
             position=2,
             type="ask",
         ),
-        OrderAnomaly(
+        OrderAnomalySaved(
+            id=UUID("00000000-0000-0000-0000-000000000002"),
             price=Decimal("27200.0"),
             quantity=Decimal("9.0"),
             order_liquidity=Decimal("244800.00"),
@@ -2308,8 +2383,8 @@ async def test_valid_anomaly_first_position_realized(
 
     assert len(worker._observing_saved_limit_anomalies) == 0
     assert mock_send_anomaly_cancellations.call_count == 0
-    assert mock_merge_and_cancel_anomalies.call_count == 0
+    assert mock_cancel_anomalies.call_count == 0
 
     assert mock_send_anomalies_realizations.call_count == 1
-    assert mock_merge_and_confirm_anomalies.call_count == 1
+    assert mock_confirm_anomalies.call_count == 1
     assert order_anomaly_realization == expected_order_anomaly_realization
