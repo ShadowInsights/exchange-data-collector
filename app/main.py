@@ -4,11 +4,11 @@ import uuid
 
 from prometheus_client import start_http_server
 
-from app.common.config import settings
-from app.common.maestro import Maestro
+from app.application.common.maestro import Maestro
+from app.utilities.logging_utils import get_logging_level
 
 logging.basicConfig(
-    level=settings.LOGGING_LEVEL,
+    level=get_logging_level(),
     format="%(asctime)s [%(filename)s] %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(),

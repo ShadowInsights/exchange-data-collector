@@ -5,14 +5,14 @@ from uuid import UUID
 
 import pytest
 
-from app.common.processor import Processor
-from app.services.collectors.clients.schemas.common import OrderBookEvent
-from app.services.collectors.common import Collector
-from app.services.workers.orders_anomalies_summary_worker import (
+from app.application.common.collector import Collector
+from app.application.common.processor import Processor
+from app.application.workers.orders_anomalies_summary_worker import (
     OrdersAnomaliesSummary,
     OrdersAnomaliesSummaryWorker,
 )
-from app.utils.event_utils import EventHandler
+from app.infrastructure.clients.schemas.common import OrderBookEvent
+from app.utilities.event_utils import EventHandler
 
 
 class MockCollector(Collector):
@@ -57,19 +57,19 @@ def collector() -> Collector:
 
 
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.get_latest_orders_anomalies_summary",
+    "app.application.workers.orders_anomalies_summary_worker.get_latest_orders_anomalies_summary",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.get_order_book_anomalies_sum_in_date_range",
+    "app.application.workers.orders_anomalies_summary_worker.get_order_book_anomalies_sum_in_date_range",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.create_orders_anomalies_summary",
+    "app.application.workers.orders_anomalies_summary_worker.create_orders_anomalies_summary",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
+    "app.application.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
     new_callable=AsyncMock,
 )
 async def test_worker_should_valid_create_orders_anomalies_summary(
@@ -104,19 +104,19 @@ async def test_worker_should_valid_create_orders_anomalies_summary(
 
 
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.get_latest_orders_anomalies_summary",
+    "app.application.workers.orders_anomalies_summary_worker.get_latest_orders_anomalies_summary",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.get_order_book_anomalies_sum_in_date_range",
+    "app.application.workers.orders_anomalies_summary_worker.get_order_book_anomalies_sum_in_date_range",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.create_orders_anomalies_summary",
+    "app.application.workers.orders_anomalies_summary_worker.create_orders_anomalies_summary",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
+    "app.application.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
     new_callable=AsyncMock,
 )
 async def test_worker_should_valid_send_orders_anomalies_summary_anomaly_when_deviation_exists(
@@ -152,19 +152,19 @@ async def test_worker_should_valid_send_orders_anomalies_summary_anomaly_when_de
 
 
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.get_latest_orders_anomalies_summary",
+    "app.application.workers.orders_anomalies_summary_worker.get_latest_orders_anomalies_summary",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.get_order_book_anomalies_sum_in_date_range",
+    "app.application.workers.orders_anomalies_summary_worker.get_order_book_anomalies_sum_in_date_range",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.create_orders_anomalies_summary",
+    "app.application.workers.orders_anomalies_summary_worker.create_orders_anomalies_summary",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
+    "app.application.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
     new_callable=AsyncMock,
 )
 async def test_worker_should_valid_send_orders_anomalies_summary_anomaly_when_numbers_do_not_have_same_sign(
@@ -200,19 +200,19 @@ async def test_worker_should_valid_send_orders_anomalies_summary_anomaly_when_nu
 
 
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.get_latest_orders_anomalies_summary",
+    "app.application.workers.orders_anomalies_summary_worker.get_latest_orders_anomalies_summary",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.get_order_book_anomalies_sum_in_date_range",
+    "app.application.workers.orders_anomalies_summary_worker.get_order_book_anomalies_sum_in_date_range",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.create_orders_anomalies_summary",
+    "app.application.workers.orders_anomalies_summary_worker.create_orders_anomalies_summary",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
+    "app.application.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
     new_callable=AsyncMock,
 )
 async def test_worker_should_not_send_orders_anomalies_summary_anomaly_when_no_changes(
@@ -229,6 +229,47 @@ async def test_worker_should_not_send_orders_anomalies_summary_anomaly_when_no_c
         [],
         [
             Mock(orders_total_difference=Decimal("10")),
+            Mock(orders_total_difference=Decimal("12")),
+            Mock(orders_total_difference=Decimal("11")),
+            Mock(orders_total_difference=Decimal("10")),
+        ],
+    ]
+
+    await worker._run_worker()
+
+    assert mock_send_notification.call_count == 0
+
+
+@patch(
+    "app.application.workers.orders_anomalies_summary_worker.get_latest_orders_anomalies_summary",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.application.workers.orders_anomalies_summary_worker.get_order_book_anomalies_sum_in_date_range",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.application.workers.orders_anomalies_summary_worker.create_orders_anomalies_summary",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.application.workers.orders_anomalies_summary_worker.OrdersAnomaliesSummaryWorker._send_notification",
+    new_callable=AsyncMock,
+)
+async def test_worker_should_not_send_orders_anomalies_summary_anomaly_when_current_anomalies_difference_is_zero(
+    mock_send_notification: AsyncMock,
+    mock_create_orders_anomalies_summary: AsyncMock,
+    mock_get_order_book_anomalies_sum_in_date_range: AsyncMock,
+    mock_get_latest_orders_anomalies_summary: AsyncMock,
+    processor: Processor,
+) -> None:
+    worker = OrdersAnomaliesSummaryWorker(
+        processor=processor, volume_anomaly_ratio=2
+    )
+    mock_get_latest_orders_anomalies_summary.side_effect = [
+        [],
+        [
+            Mock(orders_total_difference=Decimal("0")),
             Mock(orders_total_difference=Decimal("12")),
             Mock(orders_total_difference=Decimal("11")),
             Mock(orders_total_difference=Decimal("10")),

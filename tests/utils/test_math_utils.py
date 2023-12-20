@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from app.utils.math_utils import (
+from app.utilities.math_utils import (
     calculate_decimal_average,
     calculate_decimal_ratio,
     calculate_diff_over_sum,

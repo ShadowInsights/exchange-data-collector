@@ -5,18 +5,20 @@ from uuid import UUID
 
 import pytest
 
-from app.common.processor import Processor
-from app.db.models.order_book_anomaly import OrderBookAnomalyModel
-from app.services.collectors.clients.schemas.common import OrderBook, OrderBookEvent
-from app.services.collectors.common import Collector
-from app.services.workers.orders_worker import (
+from app.application.common.collector import Collector
+from app.application.common.processor import Processor
+from app.application.workers.orders_worker import (
     AnomalyKey,
     OrderAnomaly,
     OrderAnomalyInTime,
     OrderAnomalySaved,
     OrdersWorker,
 )
-from app.utils.event_utils import EventHandler
+from app.infrastructure.clients.schemas.common import OrderBookEvent, OrderBook
+from app.infrastructure.db.models.order_book_anomaly import (
+    OrderBookAnomalyModel,
+)
+from app.utilities.event_utils import EventHandler
 
 
 class MockCollector(Collector):
@@ -61,15 +63,15 @@ def collector() -> Collector:
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
     mock_get_current_time: Mock,
@@ -222,15 +224,15 @@ async def test_valid_anomaly_detection_first_positions_not_match_liquidity(
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_valid_anomaly_detection_and_put_for_observe_non_first_positions(
     mock_get_current_time: Mock,
@@ -320,15 +322,15 @@ async def test_valid_anomaly_detection_and_put_for_observe_non_first_positions(
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_non_first_already_observing_anomalies_for_notification_after_expiration_of_observing_ttl(
     mock_get_current_time: Mock,
@@ -419,11 +421,11 @@ async def test_non_first_already_observing_anomalies_for_notification_after_expi
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_real_orders_valid_processing_when_new_one_appears(
     mock_get_current_time: Mock,
@@ -499,7 +501,7 @@ async def test_real_orders_valid_processing_when_new_one_appears(
 
 
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_real_orders_observing_does_not_exist(
     mock_get_current_time: Mock,
@@ -562,11 +564,11 @@ async def test_real_orders_observing_does_not_exist(
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_real_orders_valid_processing_changed_more_than_ratio(
     mock_get_current_time: Mock,
@@ -632,11 +634,11 @@ async def test_real_orders_valid_processing_changed_more_than_ratio(
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_real_orders_nothing_match_order_anomaly_multiplier(
     mock_get_current_time: Mock,
@@ -678,11 +680,11 @@ async def test_real_orders_nothing_match_order_anomaly_multiplier(
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_skipping_the_first_position_anomaly_that_has_non_expired_key_in_cache(
     mock_get_current_time: Mock,
@@ -736,11 +738,11 @@ async def test_skipping_the_first_position_anomaly_that_has_non_expired_key_in_c
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_skipping_non_first_position_anomaly_that_has_non_expired_key_in_cache_and_not_observing(
     mock_get_current_time: Mock,
@@ -803,15 +805,15 @@ async def test_skipping_non_first_position_anomaly_that_has_non_expired_key_in_c
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key_not_exist_in_cache(
     mock_get_current_time: Mock,
@@ -867,15 +869,15 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key_is_expired_in_cache(
     mock_get_current_time: Mock,
@@ -945,15 +947,15 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_anomaly_key
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_passing_first_position_anomaly_and_adding_to_cache_if_input_anomaly_is_significantly_increased(
     mock_get_current_time: Mock,
@@ -1024,11 +1026,11 @@ async def test_passing_first_position_anomaly_and_adding_to_cache_if_input_anoma
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly_key_not_exist_in_cache(
     mock_get_current_time: Mock,
@@ -1088,11 +1090,11 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly_key_is_expired_in_cache(
     mock_get_current_time: Mock,
@@ -1163,11 +1165,11 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_anomaly
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_input_anomaly_is_significantly_increased(
     mock_get_current_time: Mock,
@@ -1240,11 +1242,11 @@ async def test_passing_non_first_position_anomaly_and_adding_to_cache_if_input_a
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_deleting_expired_keys_from_cache_that_doesnt_exist_in_order_book(
     mock_get_current_time: Mock,
@@ -1299,11 +1301,11 @@ async def test_deleting_expired_keys_from_cache_that_doesnt_exist_in_order_book(
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_valid_anomaly_detection_first_positions_not_match_minimum_liquidity(
     mock_get_current_time: Mock,
@@ -1346,11 +1348,11 @@ async def test_valid_anomaly_detection_first_positions_not_match_minimum_liquidi
 
 
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_overbook_none_found(
     mock_get_current_time: Mock,
@@ -1394,15 +1396,15 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_overboo
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_order_book(
     mock_get_current_time: Mock,
@@ -1448,18 +1450,18 @@ async def test_valid_anomaly_detection_valid_match_maximum_anomalies_per_order_b
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.confirm_anomalies_list",
+    "app.application.workers.orders_worker.confirm_anomalies_list",
     new_callable=AsyncMock,
 )
 async def test_non_first_already_observing_anomalies_for_db_saving_after_expiration_of_observing_ttl(
@@ -1635,18 +1637,18 @@ async def test_non_first_already_observing_anomalies_for_db_saving_after_expirat
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.confirm_anomalies_list",
+    "app.application.workers.orders_worker.confirm_anomalies_list",
     new_callable=AsyncMock,
 )
 async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
@@ -1740,22 +1742,22 @@ async def test_non_first_placed_in_observing_saved_limit_anomalies_ratio(
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.cancel_anomalies_list",
+    "app.application.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_canceled_anomalies",
     new_callable=AsyncMock,
 )
 async def test_non_first_anomaly_did_not_canceled(
@@ -1825,22 +1827,22 @@ async def test_non_first_anomaly_did_not_canceled(
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.cancel_anomalies_list",
+    "app.application.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
+    "app.application.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 async def test_non_first_anomaly_canceled(
     mock_send_anomaly_cancellations: Mock,
@@ -1937,22 +1939,22 @@ async def test_non_first_anomaly_canceled(
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.cancel_anomalies_list",
+    "app.application.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
+    "app.application.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 async def test_valid_anomaly_canceled(
     mock_send_anomaly_cancellations: Mock,
@@ -2044,29 +2046,29 @@ async def test_valid_anomaly_canceled(
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.cancel_anomalies_list",
+    "app.application.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
+    "app.application.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 @patch(
-    "app.services.workers.orders_worker.confirm_anomalies_list",
+    "app.application.workers.orders_worker.confirm_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_realized_anomalies"
+    "app.application.workers.orders_worker.OrdersWorker._send_realized_anomalies"
 )
 async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
     mock_send_anomalies_realizations: Mock,
@@ -2160,29 +2162,29 @@ async def test_valid_anomaly_canceled_ask_by_unexpected_changing(
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.cancel_anomalies_list",
+    "app.application.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
+    "app.application.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 @patch(
-    "app.services.workers.orders_worker.confirm_anomalies_list",
+    "app.application.workers.orders_worker.confirm_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_realized_anomalies"
+    "app.application.workers.orders_worker.OrdersWorker._send_realized_anomalies"
 )
 async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
     mock_send_anomalies_realizations: Mock,
@@ -2276,29 +2278,29 @@ async def test_valid_anomaly_canceled_bid_by_unexpected_changing(
 
 
 @patch(
-    "app.services.workers.orders_worker.create_order_book_anomalies",
+    "app.application.workers.orders_worker.create_order_book_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_anomalies",
+    "app.application.workers.orders_worker.OrdersWorker._send_anomalies",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.get_current_time",
+    "app.application.workers.orders_worker.get_current_time",
 )
 @patch(
-    "app.services.workers.orders_worker.cancel_anomalies_list",
+    "app.application.workers.orders_worker.cancel_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
+    "app.application.workers.orders_worker.OrdersWorker._send_canceled_anomalies"
 )
 @patch(
-    "app.services.workers.orders_worker.confirm_anomalies_list",
+    "app.application.workers.orders_worker.confirm_anomalies_list",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.orders_worker.OrdersWorker._send_realized_anomalies"
+    "app.application.workers.orders_worker.OrdersWorker._send_realized_anomalies"
 )
 async def test_valid_anomaly_first_position_realized(
     mock_send_anomalies_realizations: Mock,

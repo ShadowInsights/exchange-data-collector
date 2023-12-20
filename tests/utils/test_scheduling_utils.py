@@ -1,7 +1,7 @@
 import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
-from app.utils.scheduling_utils import SetInterval
+from app.utilities.scheduling_utils import SetInterval
 
 
 @SetInterval(5, "test")
@@ -11,12 +11,15 @@ async def func(callback_event: asyncio.Event | None = None) -> None:
 
 
 @patch(
-    "app.utils.scheduling_utils.get_current_time",
+    "app.utilities.scheduling_utils.get_current_time",
 )
 @patch(
-    "app.utils.scheduling_utils.SetInterval.get_is_interrupted",
+    "app.utilities.scheduling_utils.SetInterval.get_is_interrupted",
 )
-@patch("app.utils.scheduling_utils.asyncio.sleep", new_callable=AsyncMock)
+@patch(
+    "app.utilities.scheduling_utils.asyncio.sleep",
+    new_callable=AsyncMock,
+)
 async def test_is_fast_executed_function_invoked_n_times_in_specified_interval(
     mock_sleep: AsyncMock,
     mock_get_is_interrupted: Mock,
@@ -46,12 +49,15 @@ async def test_is_fast_executed_function_invoked_n_times_in_specified_interval(
 
 
 @patch(
-    "app.utils.scheduling_utils.get_current_time",
+    "app.utilities.scheduling_utils.get_current_time",
 )
 @patch(
-    "app.utils.scheduling_utils.SetInterval.get_is_interrupted",
+    "app.utilities.scheduling_utils.SetInterval.get_is_interrupted",
 )
-@patch("app.utils.scheduling_utils.asyncio.sleep", new_callable=AsyncMock)
+@patch(
+    "app.utilities.scheduling_utils.asyncio.sleep",
+    new_callable=AsyncMock,
+)
 async def test_is_long_executed_function_invoked_n_times_in_specified_interval(
     mock_sleep: AsyncMock,
     mock_get_is_interrupted: Mock,

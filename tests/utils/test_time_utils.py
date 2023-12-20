@@ -4,7 +4,7 @@ from datetime import time
 from typing import Callable
 from unittest.mock import patch
 
-from app.utils.time_utils import (
+from app.utilities.time_utils import (
     LONDON_TRADING_SESSION,
     NEW_YORK_TRADING_SESSION,
     TOKYO_TRADING_SESSION,
@@ -35,7 +35,7 @@ class MockDateTime:
         return original_datetime(*args, **kwargs)
 
 
-@patch("app.utils.time_utils.datetime", new=MockDateTime)
+@patch("app.utilities.time_utils.datetime", new=MockDateTime)
 def test_is_current_time_inside_trading_sessions() -> None:
     MockDateTime.mocked_utcnow = lambda: original_datetime(2022, 1, 1, 1, 0)
     assert not is_current_time_inside_trading_sessions(

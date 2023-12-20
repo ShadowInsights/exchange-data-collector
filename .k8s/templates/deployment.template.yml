@@ -224,3 +224,8 @@ spec:
                 configMapKeyRef:
                   key: ANOMALIES_SIGNIFICANTLY_INCREASED_RATIO
                   name: exchange-data-collector-config
+            - name: LOGGING_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  key: LOGGING_LEVEL
+                  name: exchange-data-collector-config

@@ -5,11 +5,11 @@ from uuid import UUID
 
 import pytest
 
-from app.common.processor import Processor
-from app.services.collectors.clients.schemas.common import OrderBookEvent
-from app.services.collectors.common import Collector
-from app.services.workers.volume_worker import VolumeWorker
-from app.utils.event_utils import EventHandler
+from app.application.common.collector import Collector
+from app.application.common.processor import Processor
+from app.application.workers.volume_worker import VolumeWorker
+from app.infrastructure.clients.schemas.common import OrderBookEvent
+from app.utilities.event_utils import EventHandler
 
 
 class MockCollector(Collector):
@@ -56,20 +56,20 @@ def collector() -> Collector:
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._send_notification",
+    "app.application.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_average_volumes"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_average_volumes"
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
 )
 @patch(
-    "app.services.workers.volume_worker.save_volume",
+    "app.application.workers.volume_worker.save_volume",
     new_callable=AsyncMock,
 )
-@patch("app.services.workers.volume_worker.calculate_avg_by_summary")
+@patch("app.application.workers.volume_worker.calculate_avg_by_summary")
 async def test_non_anomaly_anomaly(
     mock_calculate_avg_by_summary: Mock,
     mock_save_volume: AsyncMock,
@@ -124,20 +124,20 @@ async def test_non_anomaly_anomaly(
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._send_notification",
+    "app.application.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_average_volumes"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_average_volumes"
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
 )
 @patch(
-    "app.services.workers.volume_worker.save_volume",
+    "app.application.workers.volume_worker.save_volume",
     new_callable=AsyncMock,
 )
-@patch("app.services.workers.volume_worker.calculate_avg_by_summary")
+@patch("app.application.workers.volume_worker.calculate_avg_by_summary")
 async def test_inflow_volume_anomaly_detection(
     mock_calculate_avg_by_summary: Mock,
     mock_save_volume: AsyncMock,
@@ -191,20 +191,20 @@ async def test_inflow_volume_anomaly_detection(
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._send_notification",
+    "app.application.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_average_volumes"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_average_volumes"
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
 )
 @patch(
-    "app.services.workers.volume_worker.save_volume",
+    "app.application.workers.volume_worker.save_volume",
     new_callable=AsyncMock,
 )
-@patch("app.services.workers.volume_worker.calculate_avg_by_summary")
+@patch("app.application.workers.volume_worker.calculate_avg_by_summary")
 async def test_outflow_volume_anomaly_detection(
     mock_calculate_avg_by_summary: Mock,
     mock_save_volume: AsyncMock,
@@ -265,20 +265,20 @@ async def test_outflow_volume_anomaly_detection(
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._send_notification",
+    "app.application.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_average_volumes"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_average_volumes"
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
 )
 @patch(
-    "app.services.workers.volume_worker.save_volume",
+    "app.application.workers.volume_worker.save_volume",
     new_callable=AsyncMock,
 )
-@patch("app.services.workers.volume_worker.calculate_avg_by_summary")
+@patch("app.application.workers.volume_worker.calculate_avg_by_summary")
 async def test_not_enough_last_average_volumes(
     mock_calculate_avg_by_summary: Mock,
     mock_save_volume: AsyncMock,
@@ -317,16 +317,16 @@ async def test_not_enough_last_average_volumes(
 
 
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._send_notification",
+    "app.application.workers.volume_worker.VolumeWorker._send_notification",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_average_volumes"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_average_volumes"
 )
 @patch(
-    "app.services.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
+    "app.application.workers.volume_worker.VolumeWorker._find_last_bid_ask_ratio"
 )
-@patch("app.services.workers.volume_worker.save_volume")
+@patch("app.application.workers.volume_worker.save_volume")
 async def test_right_calculating_average(
     mock_save_volume: AsyncMock,
     mock_find_last_bid_ask_ratio: Mock,
