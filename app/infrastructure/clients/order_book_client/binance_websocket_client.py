@@ -5,9 +5,8 @@ import websockets
 from _decimal import Decimal
 
 from app.infrastructure.clients.common import WebsocketClient
-from app.infrastructure.clients.schemas.binance import (
-    BinanceOrderBookDepthUpdate,
-)
+from app.infrastructure.clients.order_book_client.schemas.binance import \
+    BinanceOrderBookDepthUpdate
 
 
 class BinanceWebsocketClient(WebsocketClient):

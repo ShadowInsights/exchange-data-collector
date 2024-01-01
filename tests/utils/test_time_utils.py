@@ -4,14 +4,11 @@ from datetime import time
 from typing import Callable
 from unittest.mock import patch
 
-from app.utilities.time_utils import (
-    LONDON_TRADING_SESSION,
-    NEW_YORK_TRADING_SESSION,
-    TOKYO_TRADING_SESSION,
-    TradingSession,
-    get_current_time,
-    is_current_time_inside_trading_sessions,
-)
+from app.utilities.time_utils import (LONDON_TRADING_SESSION,
+                                      NEW_YORK_TRADING_SESSION,
+                                      TOKYO_TRADING_SESSION, TradingSession,
+                                      get_current_time,
+                                      is_current_time_inside_trading_sessions)
 
 
 def test_trading_session() -> None:

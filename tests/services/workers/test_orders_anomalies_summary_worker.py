@@ -8,10 +8,9 @@ import pytest
 from app.application.common.collector import Collector
 from app.application.common.processor import Processor
 from app.application.workers.orders_anomalies_summary_worker import (
-    OrdersAnomaliesSummary,
-    OrdersAnomaliesSummaryWorker,
-)
-from app.infrastructure.clients.schemas.common import OrderBookEvent
+    OrdersAnomaliesSummary, OrdersAnomaliesSummaryWorker)
+from app.infrastructure.clients.order_book_client.schemas.common import \
+    OrderBookEvent
 from app.utilities.event_utils import EventHandler
 
 

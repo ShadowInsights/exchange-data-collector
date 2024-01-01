@@ -5,11 +5,12 @@ from uuid import UUID
 from _decimal import Decimal
 
 from app.application.common.collector import Collector
-from app.infrastructure.clients.binance_http_client import BinanceHttpClient
-from app.infrastructure.clients.binance_websocket_client import (
-    BinanceWebsocketClient,
-)
-from app.infrastructure.clients.schemas.common import OrderBookEvent
+from app.infrastructure.clients.order_book_client.binance_http_client import \
+    BinanceHttpClient
+from app.infrastructure.clients.order_book_client.binance_websocket_client import \
+    BinanceWebsocketClient
+from app.infrastructure.clients.order_book_client.schemas.common import \
+    OrderBookEvent
 
 
 class BinanceCollector(Collector):

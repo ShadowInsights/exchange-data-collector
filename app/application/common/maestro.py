@@ -10,46 +10,34 @@ from app.application.collectors.coinbase_collector import CoinbaseCollector
 from app.application.collectors.kraken_collector import KrakenCollector
 from app.application.common.collector import Collector
 from app.application.common.processor import Processor
-from app.application.messengers.discord.order_book_discord_messenger import (
-    OrderBookDiscordMessenger,
-)
-from app.application.messengers.discord.orders_anomalies_summary_discord_messenger import (
-    OrdersAnomaliesSummaryDiscordMessenger,
-)
-from app.application.messengers.discord.volume_discord_messenger import (
-    VolumeDiscordMessenger,
-)
-from app.application.messengers.telegram.order_book_telegram_messenger import (
-    OrderBookTelegramMessenger,
-)
-from app.application.messengers.telegram.orders_anomalies_summary_telegram_messenger import (
-    OrdersAnomaliesSummaryTelegramMessenger,
-)
-from app.application.messengers.telegram.volume_telegram_messenger import (
-    VolumeTelegramMessenger,
-)
+from app.application.messengers.discord.order_book_discord_messenger import \
+    OrderBookDiscordMessenger
+from app.application.messengers.discord.orders_anomalies_summary_discord_messenger import \
+    OrdersAnomaliesSummaryDiscordMessenger
+from app.application.messengers.discord.volume_discord_messenger import \
+    VolumeDiscordMessenger
+from app.application.messengers.telegram.order_book_telegram_messenger import \
+    OrderBookTelegramMessenger
+from app.application.messengers.telegram.orders_anomalies_summary_telegram_messenger import \
+    OrdersAnomaliesSummaryTelegramMessenger
+from app.application.messengers.telegram.volume_telegram_messenger import \
+    VolumeTelegramMessenger
 from app.application.workers.common import Worker
 from app.application.workers.db_worker import DbWorker
-from app.application.workers.orders_anomalies_summary_worker import (
-    OrdersAnomaliesSummaryWorker,
-)
+from app.application.workers.orders_anomalies_summary_worker import \
+    OrdersAnomaliesSummaryWorker
 from app.application.workers.orders_worker import OrdersWorker
 from app.application.workers.volume_worker import VolumeWorker
 from app.config import settings
 from app.infrastructure.db.database import get_async_db
 from app.infrastructure.db.models.exchange import LiteralExchangeName
-from app.infrastructure.db.repositories.exchange_repository import (
-    find_exchange_by_id,
-)
+from app.infrastructure.db.repositories.exchange_repository import \
+    find_exchange_by_id
 from app.infrastructure.db.repositories.maestro_repository import (
-    CollectingPairsForUpdateResult,
-    create_maestro,
-    create_maestro_pair_associations,
-    delete_maestro_by_id,
-    find_all_not_collecting_pairs_for_update,
-    update_maestro_liveness_time,
-    update_maestro_pair_associations,
-)
+    CollectingPairsForUpdateResult, create_maestro,
+    create_maestro_pair_associations, delete_maestro_by_id,
+    find_all_not_collecting_pairs_for_update, update_maestro_liveness_time,
+    update_maestro_pair_associations)
 from app.infrastructure.db.repositories.pair_repository import find_pair_by_id
 from app.utilities.event_utils import EventHandler
 from app.utilities.scheduling_utils import SetInterval

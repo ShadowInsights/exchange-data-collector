@@ -3,21 +3,15 @@ from typing import NamedTuple
 
 from app.application.messengers.common import define_trend_status_by_deviation
 from app.application.messengers.orders_anomalies_summary_messenger import (
-    OrdersAnomaliesSummaryMessenger,
-    OrdersAnomaliesSummaryNotification,
-)
+    OrdersAnomaliesSummaryMessenger, OrdersAnomaliesSummaryNotification)
 from app.infrastructure.db.database import get_async_db
-from app.infrastructure.db.repositories.pair_repository import (
-    get_pair_and_exchange,
-)
+from app.infrastructure.db.repositories.pair_repository import \
+    get_pair_and_exchange
 from app.infrastructure.messengers.common import BaseMessage
 from app.infrastructure.messengers.telegram_messenger import TelegramMessenger
-from app.utilities.string_utils import (
-    add_comma_every_n_symbols,
-    replace_char,
-    to_title_case,
-    to_upper_case,
-)
+from app.utilities.string_utils import (add_comma_every_n_symbols,
+                                        replace_char, to_title_case,
+                                        to_upper_case)
 
 BASE_EMOJI = "⚠️"
 

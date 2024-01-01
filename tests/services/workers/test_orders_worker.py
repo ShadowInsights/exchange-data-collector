@@ -7,17 +7,14 @@ import pytest
 
 from app.application.common.collector import Collector
 from app.application.common.processor import Processor
-from app.application.workers.orders_worker import (
-    AnomalyKey,
-    OrderAnomaly,
-    OrderAnomalyInTime,
-    OrderAnomalySaved,
-    OrdersWorker,
-)
-from app.infrastructure.clients.schemas.common import OrderBookEvent, OrderBook
-from app.infrastructure.db.models.order_book_anomaly import (
-    OrderBookAnomalyModel,
-)
+from app.application.workers.orders_worker import (AnomalyKey, OrderAnomaly,
+                                                   OrderAnomalyInTime,
+                                                   OrderAnomalySaved,
+                                                   OrdersWorker)
+from app.infrastructure.clients.order_book_client.schemas.common import (
+    OrderBook, OrderBookEvent)
+from app.infrastructure.db.models.order_book_anomaly import \
+    OrderBookAnomalyModel
 from app.utilities.event_utils import EventHandler
 
 

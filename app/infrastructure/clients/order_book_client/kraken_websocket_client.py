@@ -5,19 +5,11 @@ from typing import AsyncGenerator, Union
 import websockets
 
 from app.infrastructure.clients.common import WebsocketClient
-from app.infrastructure.clients.schemas.common import (
-    OrderBookEvent,
-    OrderBookSnapshot,
-    OrderBookUpdate,
-)
-from app.infrastructure.clients.schemas.kraken import (
-    KrakenOrder,
-    KrakenOrderBook,
-    KrakenOrderBookDepthUpdate,
-    KrakenOrderBookSnapshot,
-    KrakenOrdersDict,
-    KrakenSnapshotPayload,
-)
+from app.infrastructure.clients.order_book_client.schemas.common import (
+    OrderBookEvent, OrderBookSnapshot, OrderBookUpdate)
+from app.infrastructure.clients.order_book_client.schemas.kraken import (
+    KrakenOrder, KrakenOrderBook, KrakenOrderBookDepthUpdate,
+    KrakenOrderBookSnapshot, KrakenOrdersDict, KrakenSnapshotPayload)
 
 
 class KrakenWebsocketClient(WebsocketClient):

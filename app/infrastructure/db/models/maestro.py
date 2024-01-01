@@ -3,12 +3,8 @@ from uuid import UUID
 
 from sqlalchemy import Column, DateTime, ForeignKey, Table
 from sqlalchemy.dialects.postgresql import UUID as pg_UUID
-from sqlalchemy.orm import (
-    Mapped,
-    declarative_base,
-    mapped_column,
-    relationship,
-)
+from sqlalchemy.orm import (Mapped, declarative_base, mapped_column,
+                            relationship)
 
 from app.infrastructure.db.database import BaseModel
 from app.infrastructure.db.models.pair import PairModel

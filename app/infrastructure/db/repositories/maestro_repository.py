@@ -5,10 +5,8 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.db.models.maestro import (
-    MaestroInstanceModel,
-    maestro_pair_association,
-)
+from app.infrastructure.db.models.maestro import (MaestroInstanceModel,
+                                                  maestro_pair_association)
 from app.infrastructure.db.models.pair import PairModel
 
 

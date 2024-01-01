@@ -9,11 +9,11 @@ from _decimal import Decimal
 from app.application.common.processor import Processor
 from app.application.workers.common import Worker
 from app.config import settings
-from app.infrastructure.clients.schemas.common import OrderBook
+from app.infrastructure.clients.order_book_client.schemas.common import \
+    OrderBook
 from app.infrastructure.db.database import get_async_db
-from app.infrastructure.db.repositories.order_book_repository import (
-    create_order_book,
-)
+from app.infrastructure.db.repositories.order_book_repository import \
+    create_order_book
 from app.utilities.scheduling_utils import SetInterval
 
 

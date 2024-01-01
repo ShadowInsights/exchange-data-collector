@@ -5,6 +5,15 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from app.config import DB_CONNECTION_STRING
 from app.infrastructure.db.database import BaseModel
+from app.infrastructure.db.models.pair import PairModel
+from app.infrastructure.db.models.volume import Volume
+from app.infrastructure.db.models.orders_anomalies_summary import OrdersAnomaliesSummaryModel
+from app.infrastructure.db.models.order_book_anomaly import OrderBookAnomalyModel
+from app.infrastructure.db.models.order_book import OrderBookModel
+from app.infrastructure.db.models.maestro import MaestroInstanceModel
+from app.infrastructure.db.models.exchange import ExchangeModel
+from app.infrastructure.db.models.apy_asset import APYAsset
+from app.infrastructure.db.models.apy import APY
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

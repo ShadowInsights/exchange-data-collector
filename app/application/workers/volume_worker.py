@@ -7,26 +7,20 @@ from concurrent.futures._base import Executor
 from _decimal import Decimal
 
 from app.application.common.processor import Processor
-from app.application.messengers.volume_messenger import (
-    VolumeMessenger,
-    VolumeNotification,
-)
+from app.application.messengers.volume_messenger import (VolumeMessenger,
+                                                         VolumeNotification)
 from app.application.workers.common import Worker
 from app.config import settings
-from app.infrastructure.clients.schemas.common import EventTypeEnum
+from app.infrastructure.clients.order_book_client.schemas.common import \
+    EventTypeEnum
 from app.infrastructure.db.database import get_async_db, get_sync_db
 from app.infrastructure.db.repositories.volume_repository import (
-    find_sync_last_n_volumes,
-    save_volume,
-)
+    find_sync_last_n_volumes, save_volume)
 from app.utilities.event_utils import EventHandler
-from app.utilities.math_utils import (
-    calculate_avg_by_summary,
-    calculate_decimal_average,
-    calculate_diff_over_sum,
-    calculate_int_average,
-    round_to_int,
-)
+from app.utilities.math_utils import (calculate_avg_by_summary,
+                                      calculate_decimal_average,
+                                      calculate_diff_over_sum,
+                                      calculate_int_average, round_to_int)
 from app.utilities.scheduling_utils import SetInterval
 
 

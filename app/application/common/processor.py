@@ -4,11 +4,8 @@ from uuid import UUID
 from _decimal import Decimal
 
 from app.application.common.collector import Collector
-from app.infrastructure.clients.schemas.common import (
-    EventTypeEnum,
-    OrderBook,
-    OrderBookEvent,
-)
+from app.infrastructure.clients.order_book_client.schemas.common import (
+    EventTypeEnum, OrderBook, OrderBookEvent)
 from app.utilities.event_utils import EventHandler
 
 

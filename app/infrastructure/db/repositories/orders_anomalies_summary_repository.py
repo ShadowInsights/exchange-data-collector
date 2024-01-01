@@ -4,9 +4,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.db.models.orders_anomalies_summary import (
-    OrdersAnomaliesSummaryModel,
-)
+from app.infrastructure.db.models.orders_anomalies_summary import \
+    OrdersAnomaliesSummaryModel
 
 
 async def create_orders_anomalies_summary(

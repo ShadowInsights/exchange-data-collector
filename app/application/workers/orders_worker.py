@@ -9,24 +9,17 @@ from _decimal import Decimal
 
 from app.application.common.processor import Processor
 from app.application.messengers.order_book_messenger import (
-    OrderAnomalyNotification,
-    OrderBookMessenger,
-)
+    OrderAnomalyNotification, OrderBookMessenger)
 from app.application.workers.common import Worker
 from app.config import settings
-from app.infrastructure.clients.schemas.common import OrderBook
+from app.infrastructure.clients.order_book_client.schemas.common import \
+    OrderBook
 from app.infrastructure.db.database import get_async_db
-from app.infrastructure.db.models.order_book_anomaly import (
-    OrderBookAnomalyModel,
-)
+from app.infrastructure.db.models.order_book_anomaly import \
+    OrderBookAnomalyModel
 from app.infrastructure.db.repositories.order_book_anomaly_repository import (
-    cancel_anomalies_list,
-    confirm_anomalies_list,
-    create_order_book_anomalies,
-)
-from app.utilities.math_utils import (
-    calculate_average_excluding_value_from_sum,
-)
+    cancel_anomalies_list, confirm_anomalies_list, create_order_book_anomalies)
+from app.utilities.math_utils import calculate_average_excluding_value_from_sum
 from app.utilities.scheduling_utils import SetInterval
 from app.utilities.time_utils import get_current_time
 

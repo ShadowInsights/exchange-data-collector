@@ -8,26 +8,18 @@ from typing import NamedTuple
 
 from app.application.common.processor import Processor
 from app.application.messengers.orders_anomalies_summary_messenger import (
-    OrdersAnomaliesSummaryMessenger,
-    OrdersAnomaliesSummaryNotification,
-)
+    OrdersAnomaliesSummaryMessenger, OrdersAnomaliesSummaryNotification)
 from app.application.workers.common import Worker
 from app.config import settings
 from app.infrastructure.db.database import get_async_db
-from app.infrastructure.db.models.orders_anomalies_summary import (
-    OrdersAnomaliesSummaryModel,
-)
-from app.infrastructure.db.repositories.order_book_anomaly_repository import (
-    get_order_book_anomalies_sum_in_date_range,
-)
+from app.infrastructure.db.models.orders_anomalies_summary import \
+    OrdersAnomaliesSummaryModel
+from app.infrastructure.db.repositories.order_book_anomaly_repository import \
+    get_order_book_anomalies_sum_in_date_range
 from app.infrastructure.db.repositories.orders_anomalies_summary_repository import (
-    create_orders_anomalies_summary,
-    get_latest_orders_anomalies_summary,
-)
-from app.utilities.math_utils import (
-    calculate_decimal_ratio,
-    numbers_have_same_sign,
-)
+    create_orders_anomalies_summary, get_latest_orders_anomalies_summary)
+from app.utilities.math_utils import (calculate_decimal_ratio,
+                                      numbers_have_same_sign)
 from app.utilities.scheduling_utils import SetInterval
 
 

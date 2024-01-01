@@ -3,17 +3,14 @@ from decimal import Decimal
 from typing import List
 
 from app.application.messengers.orders_anomalies_summary_messenger import (
-    OrdersAnomaliesSummaryMessenger,
-    OrdersAnomaliesSummaryNotification,
-)
+    OrdersAnomaliesSummaryMessenger, OrdersAnomaliesSummaryNotification)
 from app.config import settings
 from app.infrastructure.db.database import get_async_db
-from app.infrastructure.db.repositories.pair_repository import (
-    get_pair_and_exchange,
-)
+from app.infrastructure.db.repositories.pair_repository import \
+    get_pair_and_exchange
 from app.infrastructure.messengers.common import BaseMessage, Field
 from app.infrastructure.messengers.discord_messenger import DiscordMessenger
-from app.utilities.string_utils import to_title_case, add_comma_every_n_symbols
+from app.utilities.string_utils import add_comma_every_n_symbols, to_title_case
 
 
 class OrdersAnomaliesSummaryDiscordMessenger(

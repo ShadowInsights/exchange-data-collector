@@ -6,9 +6,8 @@ from uuid import UUID
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.db.models.order_book_anomaly import (
-    OrderBookAnomalyModel,
-)
+from app.infrastructure.db.models.order_book_anomaly import \
+    OrderBookAnomalyModel
 
 
 async def create_order_book_anomalies(

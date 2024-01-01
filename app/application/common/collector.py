@@ -5,7 +5,8 @@ from uuid import UUID
 
 from _decimal import Decimal
 
-from app.infrastructure.clients.schemas.common import OrderBookEvent
+from app.infrastructure.clients.order_book_client.schemas.common import \
+    OrderBookEvent
 
 
 class Collector(ABC):

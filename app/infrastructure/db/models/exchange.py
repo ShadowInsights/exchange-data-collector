@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.db.database import BaseModel
 
-LiteralExchangeName = Mapped[Literal["BINANCE", "KRAKEN"]]
+LiteralExchangeName = Mapped[Literal["BINANCE", "KRAKEN", "COINBASE"]]
 
 
 class ExchangeModel(BaseModel):

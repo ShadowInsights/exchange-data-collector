@@ -1,14 +1,11 @@
 from decimal import Decimal
 
-from app.utilities.math_utils import (
-    calculate_decimal_average,
-    calculate_decimal_ratio,
-    calculate_diff_over_sum,
-    calculate_int_average,
-    numbers_have_same_sign,
-    recalculate_round_average,
-    round_to_int,
-)
+from app.utilities.math_utils import (calculate_decimal_average,
+                                      calculate_decimal_ratio,
+                                      calculate_diff_over_sum,
+                                      calculate_int_average,
+                                      numbers_have_same_sign,
+                                      recalculate_round_average, round_to_int)
 
 
 def test_round_recalc_avg() -> None:

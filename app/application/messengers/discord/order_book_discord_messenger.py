@@ -3,21 +3,16 @@ from typing import List, NamedTuple
 from uuid import UUID
 
 from app.application.messengers.order_book_messenger import (
-    OrderAnomalyNotification,
-    OrderBookMessenger,
-)
+    OrderAnomalyNotification, OrderBookMessenger)
 from app.config import settings
 from app.infrastructure.db.database import get_async_db
-from app.infrastructure.db.repositories.pair_repository import (
-    get_pair_and_exchange,
-)
+from app.infrastructure.db.repositories.pair_repository import \
+    get_pair_and_exchange
 from app.infrastructure.messengers.common import BaseMessage, Field
 from app.infrastructure.messengers.discord_messenger import DiscordMessenger
-from app.utilities.string_utils import (
-    to_title_case,
-    add_comma_every_n_symbols,
-    round_decimal_to_first_non_zero,
-)
+from app.utilities.string_utils import (add_comma_every_n_symbols,
+                                        round_decimal_to_first_non_zero,
+                                        to_title_case)
 
 
 class FormattedNotification(NamedTuple):

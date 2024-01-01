@@ -7,12 +7,10 @@ from _decimal import Decimal
 
 from app.application.common.processor import Processor
 from app.config import settings
-from app.utilities.time_utils import (
-    LONDON_TRADING_SESSION,
-    NEW_YORK_TRADING_SESSION,
-    TOKYO_TRADING_SESSION,
-    is_current_time_inside_trading_sessions,
-)
+from app.utilities.time_utils import (LONDON_TRADING_SESSION,
+                                      NEW_YORK_TRADING_SESSION,
+                                      TOKYO_TRADING_SESSION,
+                                      is_current_time_inside_trading_sessions)
 
 trading_sessions = [
     TOKYO_TRADING_SESSION,
