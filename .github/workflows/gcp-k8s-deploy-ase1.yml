@@ -1,4 +1,4 @@
-name: Build and Deploy to GKE
+name: Build and Deploy to Asia 1 GKE
 
 on:
   push:
@@ -6,14 +6,14 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: lumenus-407114
+  PROJECT_ID: "${{ variables.PROJECT_ID }}"
   GAR_LOCATION: asia-east1
-  GKE_CLUSTER: lumenus-7f13-ase1
+  GKE_CLUSTER: "${{ variables.ASE1_GKE_CLUSTER }}"
   GKE_ZONE: asia-east1
   DEPLOYMENT_NAME: exchange-data-collector
   REPOSITORY: exchange-data-collector
   IMAGE: exchange-data-collector
-  REPLICA_COUNT: 7
+  REPLICA_COUNT: "${{ variables.ASE1_REPLICA_COUNT }}"
 
 jobs:
   setup-build-publish-deploy:
