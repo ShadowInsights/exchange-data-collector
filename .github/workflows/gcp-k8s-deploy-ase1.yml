@@ -42,14 +42,14 @@ jobs:
       - name: Set up GKE credentials
         uses: google-github-actions/get-gke-credentials@v0
         with:
-          cluster_name: ${{ env.ASE1_GKE_CLUSTER }}
+          cluster_name: ${{ vars.ASE1_GKE_CLUSTER }}
           location: ${{ env.GKE_ZONE }}
 
       # Build the Docker image
       - name: Build
         run: |-
           docker build \
-            --tag "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA" \
+            --tag "$GAR_LOCATION-docker.pkg.dev/${{ vars.PROJECT_ID }}/$REPOSITORY/$IMAGE:$GITHUB_SHA" \
             --build-arg GITHUB_SHA="$GITHUB_SHA" \
             --build-arg GITHUB_REF="$GITHUB_REF" \
             .
@@ -57,13 +57,13 @@ jobs:
       # Push the Docker image to Google Artifact Registry
       - name: Publish
         run: |-
-          docker push "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA"
+          docker push "$GAR_LOCATION-docker.pkg.dev/${{ vars.PROJECT_ID }}/$REPOSITORY/$IMAGE:$GITHUB_SHA"
 
       # Run the Alembic migrations
       - name: Alembic Migrations
         run: |-
           # Replace placeholder in the job template with the actual image path
-          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/templates/alembic-job.template.yml > .k8s/alembic-job.yml
+          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/${{ vars.PROJECT_ID }}/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/templates/alembic-job.template.yml > .k8s/alembic-job.yml
 
           # Delete the existing job if it exists
           kubectl delete job exchange-data-collector-alembic-migration --ignore-not-found
@@ -78,10 +78,10 @@ jobs:
       - name: Deploy
         run: |-
           # Replace image placeholder in the deployment template
-          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/templates/deployment.template.yml > .k8s/deployment-temp.yml
+          sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/${{ vars.PROJECT_ID }}/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/templates/deployment.template.yml > .k8s/deployment-temp.yml
 
           # Replace replicas placeholder in the deployment template
-          sed "s|REPLICAS_PLACEHOLDER|${{ env.ASE1_REPLICA_COUNT }}|" .k8s/deployment-temp.yml > .k8s/deployment.yml
+          sed "s|REPLICAS_PLACEHOLDER|${{ vars.ASE1_REPLICA_COUNT }}|" .k8s/deployment-temp.yml > .k8s/deployment.yml
 
           # Apply the Kubernetes deployment
           kubectl apply -f .k8s/deployment.yml
