@@ -6,14 +6,14 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: "${{ variables.PROJECT_ID }}"
+  PROJECT_ID: "${{ secrets.PROJECT_ID }}"
   GAR_LOCATION: asia-east1
-  GKE_CLUSTER: "${{ variables.ASE1_GKE_CLUSTER }}"
+  GKE_CLUSTER: "${{ secrets.ASE1_GKE_CLUSTER }}"
   GKE_ZONE: asia-east1
   DEPLOYMENT_NAME: exchange-data-collector
   REPOSITORY: exchange-data-collector
   IMAGE: exchange-data-collector
-  REPLICA_COUNT: "${{ variables.ASE1_REPLICA_COUNT }}"
+  REPLICA_COUNT: "${{ secrets.ASE1_REPLICA_COUNT }}"
 
 jobs:
   setup-build-publish-deploy:
