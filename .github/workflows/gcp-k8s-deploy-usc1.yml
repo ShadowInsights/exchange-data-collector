@@ -6,14 +6,11 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: "${{ secrets.PROJECT_ID }}"
   GAR_LOCATION: us-central1
-  GKE_CLUSTER: "${{ secrets.USC1_GKE_CLUSTER }}"
   GKE_ZONE: us-central1
   DEPLOYMENT_NAME: exchange-data-collector
   REPOSITORY: exchange-data-collector
   IMAGE: exchange-data-collector
-  REPLICA_COUNT: "${{ secrets.USC1_REPLICA_COUNT }}"
 
 jobs:
   setup-build-publish-deploy:
@@ -45,7 +42,7 @@ jobs:
       - name: Set up GKE credentials
         uses: google-github-actions/get-gke-credentials@v0
         with:
-          cluster_name: ${{ env.GKE_CLUSTER }}
+          cluster_name: ${{ env.USC1_GKE_CLUSTER }}
           location: ${{ env.GKE_ZONE }}
 
       # Build the Docker image
@@ -84,7 +81,7 @@ jobs:
           sed "s|IMAGE_PLACEHOLDER|$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA|" .k8s/templates/deployment.template.yml > .k8s/deployment-temp.yml
 
           # Replace replicas placeholder in the deployment template
-          sed "s|REPLICAS_PLACEHOLDER|${{ env.REPLICA_COUNT }}|" .k8s/deployment-temp.yml > .k8s/deployment.yml
+          sed "s|REPLICAS_PLACEHOLDER|${{ env.USC1_REPLICA_COUNT }}|" .k8s/deployment-temp.yml > .k8s/deployment.yml
 
           # Apply the Kubernetes deployment
           kubectl apply -f .k8s/deployment.yml
