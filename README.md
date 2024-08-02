@@ -64,5 +64,5 @@ gcloud iam workload-identity-pools providers create-oidc "github-provider" \
 gcloud iam service-accounts add-iam-policy-binding "YOUR_SERVICE_ACCOUNT_NAME@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
   --project="YOUR_PROJECT_ID" \
   --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/YOUR_GITHUB_ORGANIZATION/*"
+  --member="principalSet://iam.googleapis.com/projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/ShadowInsights/exchange-data-collector"
 ```
